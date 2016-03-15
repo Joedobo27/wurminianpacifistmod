@@ -157,7 +157,33 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
         }
         if (cheeseDrillWithCloth) {
             // 1kg nettle + 1L watter is 1l Nettle tea (which is also a rennet)
-            // 0.5L Nettle tea + 2L milk = 0.5 kg cheese. Use cheese's standard item stats.
+            // 0.5L Nettle tea + 8L milk = 0.5 kg cheese. Use cheese's standard item stats.
+            ItemTemplateBuilder nettleTea = new ItemTemplateBuilder("jdbNettleTea");
+            setNettleTeaID(IdFactory.getIdFor("jdbNettleTea",IdType.ITEMTEMPLATE));
+            nettleTea.name("nettle tea", "nettle", "A slightly bitter tea of dark green color. It can make milk curdle.");
+            nettleTea.size(3);
+            //nettleTea.descriptions();
+            nettleTea.itemTypes(new short[] { 26, 88, 90 });
+            nettleTea.imageNumber((short) 540);
+            nettleTea.behaviourType((short) 1);
+            nettleTea.combatDamage(0);
+            nettleTea.decayTime(86400L);
+            nettleTea.dimensions(10, 10, 10);
+            nettleTea.primarySkill(-10);
+            //nettleTea.bodySpaces();
+            nettleTea.modelName("model.liquid.");
+            nettleTea.difficulty(1.0f);
+            nettleTea.weightGrams(1000);
+            nettleTea.material((byte) 26);
+            nettleTea.value(0);
+            nettleTea.isTraded(false);
+            //nettleTea.armourType();
+            try {
+                nettleTea.build();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
             ItemTemplateBuilder cheeseDrill = new ItemTemplateBuilder("jdbCheeseDrill");
             setCheeseDrillID(IdFactory.getIdFor("jdbCheeseDrill", IdType.ITEMTEMPLATE));
             cheeseDrill.name("cheese drill", "cheese drills", "A wooden press used to compress cheese curds and separate out whey.");
@@ -526,6 +552,17 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
                         "C:\\Program Files (x86)\\Steam\\SteamApps\\common\\Wurm Unlimited Dedicated Server\\byte code prints");
             }
         }
+        if (cheeseDrillWithCloth) {
+            /*
+            Need to insert into SimpleCreationEntry#Run() and inside the "if (counter == 1.0f) {" section near the other heat checks.
+            water (source) must be hot
+            if (realSource.getTemplateId() == ItemList.water && realTarget.getTemplateId() == getNettleTeaID() &&
+            realSource.getTemperature() < 2000){
+                performer.getCommunicator().sendNormalServerMessage("The " + realSource.getName() + " must be hot to do this.");
+                throw new NoSuchItemException("Too low temperature.");
+            }
+            */
+        }
     }
 
     public void setWaxGourdID(int waxGourdID) {
@@ -566,6 +603,14 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
 
     public int getCheeseDrillID() {
         return cheeseDrillID;
+    }
+
+    public void setNettleTeaID(int nettleTeaID) {
+        this.nettleTeaID = nettleTeaID;
+    }
+
+    public int getNettleTeaID() {
+        return nettleTeaID;
     }
 
     public void setCottonToolbeltID(int cottonToolbeltID) {
