@@ -1,11 +1,8 @@
 package com.Joedobo27.WUmod;
 
-
 import com.wurmonline.server.items.*;
 import com.wurmonline.server.skills.SkillList;
-import javassist.ClassPool;
-import javassist.CtClass;
-import javassist.NotFoundException;
+import javassist.*;
 import javassist.bytecode.*;
 import org.gotti.wurmunlimited.modloader.ReflectionUtil;
 import org.gotti.wurmunlimited.modloader.classhooks.HookManager;
@@ -14,11 +11,13 @@ import org.gotti.wurmunlimited.modsupport.IdFactory;
 import org.gotti.wurmunlimited.modsupport.IdType;
 import org.gotti.wurmunlimited.modsupport.ItemTemplateBuilder;
 
+
 import java.io.IOException;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+@SuppressWarnings("unused")
 public class WurminianPacifistMod implements WurmMod, Initable, Configurable, ServerStartedListener, ItemTemplatesCreatedListener {
 
     private boolean craftCottonPelt = false;
@@ -37,10 +36,11 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
     private boolean redDyeFromMadder = false;
     private int madderID;
     private boolean cheeseDrillWithCloth = false;
-    private boolean nettleTeaAsRennet = false;
     private int nettleTeaID;
     private int cheeseDrillID;
     private boolean craftGourdCanteen = false;
+    private boolean gourdWax = false;
+    private int waxGourdID;
     private boolean craftCottonToolBelt = false;
     private int cottonToolbeltID;
 
@@ -65,8 +65,8 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
         craftCottonBed = Boolean.valueOf(properties.getProperty("craftCottonBed", Boolean.toString(craftCottonBed)));
         redDyeFromMadder = Boolean.valueOf(properties.getProperty("redDyeFromMadder", Boolean.toString(redDyeFromMadder)));
         cheeseDrillWithCloth = Boolean.valueOf(properties.getProperty("cheeseDrillWithCloth", Boolean.toString(cheeseDrillWithCloth)));
-        nettleTeaAsRennet = Boolean.valueOf(properties.getProperty("nettleTeaAsRennet", Boolean.toString(nettleTeaAsRennet)));
         craftGourdCanteen = Boolean.valueOf(properties.getProperty("craftGourdCanteen", Boolean.toString(craftGourdCanteen)));
+        gourdWax = Boolean.valueOf(properties.getProperty("gourdWax", Boolean.toString(gourdWax)));
         craftCottonToolBelt = Boolean.valueOf(properties.getProperty("craftCottonToolBelt", Boolean.toString(craftCottonToolBelt)));
     }
 
@@ -133,7 +133,7 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
             setMadderID(IdFactory.getIdFor("jdbMadder", IdType.ITEMTEMPLATE));
             madder.name("Madder", "Madders", "A plant with vibrant red roots.");
             madder.size(3);
-            //cottonBed.descriptions();
+            //madder.descriptions();
             madder.itemTypes(new short[]{46, 146, 164});
             madder.imageNumber((short) 711);
             madder.behaviourType((short) 1);
@@ -141,14 +141,14 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
             madder.decayTime(9072000L);
             madder.dimensions(3, 3, 3);
             madder.primarySkill(-10);
-            //cottonBed.bodySpaces();
+            //madder.bodySpaces();
             madder.modelName("model.herb.lovage.");
             madder.difficulty(100.0f);
             madder.weightGrams(50);
             madder.material((byte) 22);
             madder.value(100);
             madder.isTraded(true);
-            //cottonBed.armourType();
+            //madder.armourType();
             try {
                 madder.build();
             } catch (IOException e) {
@@ -162,7 +162,7 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
             setCheeseDrillID(IdFactory.getIdFor("jdbCheeseDrill", IdType.ITEMTEMPLATE));
             cheeseDrill.name("cheese drill", "cheese drills", "A wooden press used to compress cheese curds and separate out whey.");
             cheeseDrill.size(3);
-            //cottonBed.descriptions();
+            //cheeseDrill.descriptions();
             cheeseDrill.itemTypes(new short[]{108, 44, 144, 38, 21, 92, 147, 51});
             cheeseDrill.imageNumber((short) 266);
             cheeseDrill.behaviourType((short) 1);
@@ -170,14 +170,14 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
             cheeseDrill.decayTime(9072000L);
             cheeseDrill.dimensions(15, 15, 50);
             cheeseDrill.primarySkill(-10);
-            //cottonBed.bodySpaces();
+            //cheeseDrill.bodySpaces();
             cheeseDrill.modelName("model.tool.cheesedrill.");
             cheeseDrill.difficulty(30.0f);
             cheeseDrill.weightGrams(3000);
             cheeseDrill.material((byte) 14);
             cheeseDrill.value(10000);
             cheeseDrill.isTraded(true);
-            //cottonBed.armourType();
+            //cheeseDrill.armourType();
             try {
                 cheeseDrill.build();
             } catch (IOException e) {
@@ -189,7 +189,7 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
             setCottonToolbeltID(IdFactory.getIdFor("jdbCottonToolBelt", IdType.ITEMTEMPLATE));
             cottonToolBelt.name("toolbelt", "toolbelts", "An ingenious system of pockets, pouches, hooks and holes designed to keep a wide array of common tools.");
             cottonToolBelt.size(3);
-            //cottonBed.descriptions();
+            //cottonToolBelt.descriptions();
             cottonToolBelt.itemTypes(new short[] { 108, 44, 24, 92, 147, 121, 97 });
             cottonToolBelt.imageNumber((short) 861);
             cottonToolBelt.behaviourType((short) 1);
@@ -204,9 +204,36 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
             cottonToolBelt.material((byte) 17);
             cottonToolBelt.value(10000);
             cottonToolBelt.isTraded(true);
-            //cottonBed.armourType();
+            //cottonToolBelt.armourType();
             try {
                 cottonToolBelt.build();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        if (craftGourdCanteen || gourdWax){
+            ItemTemplateBuilder waxGourd = new ItemTemplateBuilder("jdbWaxGourd");
+            setWaxGourdID(IdFactory.getIdFor("jdbWaxGourd", IdType.ITEMTEMPLATE));
+            waxGourd.name("Wax gourd", "Wax gourds", "A hard shelled gourd with a narrow top and ball shaped bottom. Wax appears to be leaching out around it's stem.");
+            waxGourd.size(3);
+            //waxGourd.descriptions();
+            waxGourd.itemTypes(new short[] { 146, 102, 129 });
+            waxGourd.imageNumber((short) 501);
+            waxGourd.behaviourType((short) 16);
+            waxGourd.combatDamage(0);
+            waxGourd.decayTime(28800L);
+            waxGourd.dimensions(10, 10, 10);
+            waxGourd.primarySkill(-10);
+            //waxGourd.bodySpaces();
+            waxGourd.modelName("model.food.pumpkin.");
+            waxGourd.difficulty(200.0f);
+            waxGourd.weightGrams(1000);
+            waxGourd.material((byte)22);
+            waxGourd.value(10);
+            waxGourd.isTraded(true);
+            //waxGourd.armourType();
+            try {
+                waxGourd.build();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -232,20 +259,7 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
             pelt.setDepleteFromTarget(towelGrams);
             logger.log(Level.INFO, "Cotton Pelt created and a away to craft it added.");
         }
-        if (redDyeFromMadder) {
-            CreationEntry redMadder = CreationEntryCreator.createSimpleEntry(SkillList.ALCHEMY_NATURAL, ItemList.water,
-                    getMadderID(), ItemList.dyeRed, true, true, 0.0f, false, false, CreationCategories.DYES);
 
-            //Adding to Forage enum class.
-            Class<?> clz = WurminianPacifistMod.class; // Default value of self.
-            try {
-                clz = Class.forName("com.wurmonline.server.behaviours.Forage");
-            }catch (ClassNotFoundException e){
-                e.printStackTrace();
-            }
-            Object[] constants = clz.getEnumConstants();
-            logger.log(Level.INFO, Arrays.toString(constants));
-        }
         if (cheeseDrillWithCloth) {
             AdvancedCreationEntry clothCheeseDrill = CreationEntryCreator.createAdvancedEntry(SkillList.CARPENTRY_FINE, ItemList.plank, ItemList.shaft,
                     getCheeseDrillID(), false, false, 0.0f, true, false, CreationCategories.TOOLS);
@@ -260,8 +274,15 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
                     getCottonToolbeltID(), true, true, 0.0f, false, false, CreationCategories.CLOTHES);
             cottonToolBelt.setDepleteFromTarget(1500);
         }
-        if (toolInWSToBS){
+        if (redDyeFromMadder || craftGourdCanteen) {
+            if (redDyeFromMadder) {
+                CreationEntry redMadder = CreationEntryCreator.createSimpleEntry(SkillList.ALCHEMY_NATURAL, ItemList.water,
+                        getMadderID(), ItemList.dyeRed, true, true, 0.0f, false, false, CreationCategories.DYES);
 
+            }
+        }
+
+        if (toolInWSToBS){
             ArrayList<Integer> created = new ArrayList<>(Arrays.asList(ItemList.knifeButchering, ItemList.knifeBladeButchering,
                     ItemList.knifeCarving, ItemList.knifeBladeCarving, ItemList.sickle, ItemList.sickleBlade,
                     ItemList.scythe, ItemList.scytheBlade));
@@ -384,7 +405,6 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
 
             logger.log(Level.INFO, "Tools crafted with WS switch over to BS");
         }
-
     }
 
     @Override
@@ -396,43 +416,124 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
 
 
         ClassPool pool = HookManager.getInstance().getClassPool();
-
         CtClass ctcWurmColor = pool.makeClass("Default");
+        CtClass ctcForage = pool.makeClass("Default");
+        CtClass ctcString = pool.makeClass("Default");
+        CtClass ctcGrowthStage = pool.makeClass("Default");
+        CtClass ctcModifiedBy = pool.makeClass("Default");
+        CtClass ctcForageJDB = pool.makeClass("Default");
+        CtClass ctcArrayList = pool.makeClass("Default");
         try {
             ctcWurmColor = pool.get("com.wurmonline.server.items.WurmColor");
+            ctcForage = pool.get("com.wurmonline.server.behaviours.Forage");
+            ctcString = pool.get("java.lang.String");
+            ctcGrowthStage = pool.get("com.wurmonline.mesh.GrassData$GrowthStage");
+            ctcModifiedBy = pool.get("com.wurmonline.server.behaviours.ModifiedBy");
+            ctcForageJDB = pool.get("com.Joedobo27.WUmod.ForageJDB");
+            ctcArrayList = pool.get("java.util.ArrayList");
         } catch (NotFoundException e) {
             e.printStackTrace();
         }
         ClassFile cfWurmColor = ctcWurmColor.getClassFile();
         ConstPool cpWurmColor = cfWurmColor.getConstPool();
 
-        if (redDyeFromMadder) {
-            setGetCompositeColor(cfWurmColor,"(IIIF)I","GetCompositeColor");
+        if (redDyeFromMadder || craftGourdCanteen || gourdWax) {
+            // Convert WU's Forage.class from Enum to ArrayList<Object[]>.
+            //CtMethod ctmSetForageData = null;
+            CtMethod ctmSetForageData1 = new CtMethod(CtClass.voidType,"",new CtClass[]{}, ctcForage);
             try {
-                getGetCompositeColorIterator().insertGap(9, 7);
-            } catch (BadBytecode badBytecode) {
-                badBytecode.printStackTrace();
+                ctmSetForageData1 = ctcForageJDB.getMethod("setForageData", "()V");
+            } catch (NotFoundException e) {
+                e.printStackTrace();
             }
-            jbt = new jaseBT();
-            //<editor-fold desc="Change information.">
-            // insert 7 wide gap at line 9.
-            // this--if (itemTemplateId == 439) {
-            // becomes-- if (itemTemplateId == 439 || itemTemplateID == ??) {
-            // Where ?? is a value picked for Madder and inserted with with ConstantPool.addIntegerInfo()
-            //</editor-fold>
-            jbt.setOpCodeStructure(new ArrayList<>(Arrays.asList(Opcode.IF_ICMPEQ, Opcode.ILOAD_2, Opcode.LDC_W)));
-            jbt.setOperandStructure(new ArrayList<>(Arrays.asList("000f","",
-                    String.format("%04X", cpWurmColor.addIntegerInfo(getMadderID())))));
-            jbt.setOpcodeOperand();
-            replaceByteResult = jaseBT.byteCodeFindReplace("00,00,00,00,00,00,00","00,00,00,00,00,00,00",jbt.getOpcodeOperand(),getGetCompositeColorIterator(),
-                    "GetCompositeColor");
+            ClassMap map = new ClassMap();
+            map.put(ctcForageJDB.getClass().getName(), ctcForage.getClass().getName());
+            CtMethod ctmSetForageData = new CtMethod(CtClass.voidType, "setForageData", new CtClass[]{},ctcForage);
             try {
-                getGetCompositeColorMInfo().rebuildStackMapIf6(pool,cfWurmColor);
-            } catch (BadBytecode badBytecode) {
-                badBytecode.printStackTrace();
+                ctmSetForageData.setBody(ctmSetForageData1, map);
+            } catch (CannotCompileException e) {
+                e.printStackTrace();
             }
-            logger.log(Level.INFO, replaceByteResult);
+            CtField ctfForageDescriptor = null;
+            CtField ctfForageOrdinal = null;
+            CtField ctfFORAGE_DEFAULT = null;
+            CtField ctfForageData = null;
+            try {
+                ctfForageDescriptor = CtField.make("private String forageDescriptor;", ctcForage);
+                ctfForageOrdinal = CtField.make("private int forageOrdinal;", ctcForage);
+                //ctfFORAGE_DEFAULT = CtField.make(
+                //        "private static Forage FORAGE_DEFAULT = new Forage(\"\",0,(byte)0,GrassData.GrowthStage.SHORT,(short)0, 0, (byte)0, 0, 0, 0, 0, ModifiedBy.NOTHING, 0);",
+                //        ctcForage);
+                ctfForageData = CtField.make("public static java.util.ArrayList forageData;", ctcForage);
+            } catch (CannotCompileException e) {
+                e.printStackTrace();
+            }
+            try {
+                ctcForage.addField(ctfForageDescriptor);
+                ctcForage.addField(ctfForageOrdinal);
+                //ctcForage.addField(ctfFORAGE_DEFAULT);
+                ctcForage.addField(ctfForageData);
+            } catch (CannotCompileException e) {
+                e.printStackTrace();
+            }
+
+            CtConstructor ctnForage = new CtConstructor(new CtClass[]{},ctcForage);
+            CtConstructor ctnForageJDB = new CtConstructor(new CtClass[]{},ctcForageJDB);
+            try {
+                //(Ljava/lang/String;IBLcom/wurmonline/mesh/GrassData$GrowthStage;SIBIIIILcom/wurmonline/server/behaviours/ModifiedBy;I)V
+                ctnForage = ctcForage.getDeclaredConstructor(new CtClass[]{ctcString, CtClass.intType, CtClass.byteType,
+                    ctcGrowthStage, CtClass.shortType, CtClass.intType, CtClass.byteType, CtClass.intType, CtClass.intType, CtClass.intType, CtClass.intType,
+                    ctcModifiedBy, CtClass.intType});
+                ctnForageJDB = ctcForageJDB.getConstructor(
+                        "(Ljava/lang/String;IBLcom/wurmonline/mesh/GrassData$GrowthStage;SIBIIIILcom/wurmonline/server/behaviours/ModifiedBy;I)V");
+            } catch (NotFoundException e) {
+                e.printStackTrace();
+            }
+            try {
+                ctnForage.setBody(ctnForageJDB, map);
+            } catch (CannotCompileException e) {
+                e.printStackTrace();
+            }
+
+
+            if (redDyeFromMadder) {
+                setGetCompositeColor(cfWurmColor, "(IIIF)I", "getCompositeColor");
+                try {
+                    getGetCompositeColorIterator().insertGap(9, 7);
+                } catch (BadBytecode badBytecode) {
+                    badBytecode.printStackTrace();
+                }
+                jbt = new jaseBT();
+                //<editor-fold desc="Change information.">
+                // insert 7 wide gap at line 9.
+                // this--if (itemTemplateId == 439) {
+                // becomes-- if (itemTemplateId == 439 || itemTemplateID == ??) {
+                // Where ?? is a value picked for Madder and inserted with with ConstantPool.addIntegerInfo()
+                //</editor-fold>
+                jbt.setOpCodeStructure(new ArrayList<>(Arrays.asList(Opcode.IF_ICMPEQ, Opcode.ILOAD_2, Opcode.LDC_W)));
+                jbt.setOperandStructure(new ArrayList<>(Arrays.asList("000a", "",
+                        String.format("%04X", cpWurmColor.addIntegerInfo(getMadderID())))));
+                jbt.setOpcodeOperand();
+                replaceByteResult = jaseBT.byteCodeFindReplace("00,00,00,00,00,00,00", "00,00,00,00,00,00,00", jbt.getOpcodeOperand(), getGetCompositeColorIterator(),
+                        "getCompositeColor");
+                try {
+                    getGetCompositeColorMInfo().rebuildStackMapIf6(pool, cfWurmColor);
+                } catch (BadBytecode badBytecode) {
+                    badBytecode.printStackTrace();
+                }
+                logger.log(Level.INFO, replaceByteResult);
+                jaseBT.byteCodePrint(getGetCompositeColorIterator(), "getCompositeColor",
+                        "C:\\Program Files (x86)\\Steam\\SteamApps\\common\\Wurm Unlimited Dedicated Server\\byte code prints");
+            }
         }
+    }
+
+    public void setWaxGourdID(int waxGourdID) {
+        this.waxGourdID = waxGourdID;
+    }
+
+    public int getWaxGourdID() {
+        return waxGourdID;
     }
 
     public void setTowelItemID(int towelItemID) {
