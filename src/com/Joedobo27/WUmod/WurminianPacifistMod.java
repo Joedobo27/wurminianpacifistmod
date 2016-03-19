@@ -13,6 +13,7 @@ import org.gotti.wurmunlimited.modsupport.ItemTemplateBuilder;
 
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -43,6 +44,8 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
     private int waxGourdID;
     private boolean craftCottonToolBelt = false;
     private int cottonToolbeltID;
+
+    private Field EMPTY_FIELD;
 
     private CodeAttribute getCompositeColorAttribute;
     private CodeIterator getCompositeColorIterator;
@@ -330,6 +333,7 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
 
             //remove all simpleEntries matching the created items.
             HashMap<Integer, List<CreationEntry>> toDeleteSimple = new HashMap<>();
+            //noinspection Convert2streamapi
             for (HashMap.Entry<Integer, List<CreationEntry>> simpleEntries1 : simpleEntries.entrySet()) {
                 if (created.contains(simpleEntries1.getKey())) {
                     toDeleteSimple.put(simpleEntries1.getKey(), simpleEntries1.getValue());
@@ -349,6 +353,7 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
                         entries = new ArrayList<>();
                         toDeleteMatrix.put(matrix1.getKey(), entries);
                     }
+                    //noinspection Convert2streamapi
                     for (CreationEntry entry : matrix1.getValue()) {
                         if (created.contains(entry.getObjectCreated())) {
                             toDeleteMatrix.get(matrix1.getKey()).add(entry);
@@ -442,24 +447,45 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
 
 
         ClassPool pool = HookManager.getInstance().getClassPool();
+
         CtClass ctcWurmColor = pool.makeClass("Default");
-        CtClass ctcForage = pool.makeClass("Default");
-        CtClass ctcString = pool.makeClass("Default");
-        CtClass ctcGrowthStage = pool.makeClass("Default");
-        CtClass ctcModifiedBy = pool.makeClass("Default");
-        CtClass ctcForageJDB = pool.makeClass("Default");
-        CtClass ctcArrayList = pool.makeClass("Default");
         try {
             ctcWurmColor = pool.get("com.wurmonline.server.items.WurmColor");
-            ctcForage = pool.get("com.wurmonline.server.behaviours.Forage");
-            ctcString = pool.get("java.lang.String");
-            ctcGrowthStage = pool.get("com.wurmonline.mesh.GrassData$GrowthStage");
-            ctcModifiedBy = pool.get("com.wurmonline.server.behaviours.ModifiedBy");
-            ctcForageJDB = pool.get("com.Joedobo27.WUmod.ForageJDB");
-            ctcArrayList = pool.get("java.util.ArrayList");
         } catch (NotFoundException e) {
             e.printStackTrace();
         }
+
+        CtClass ctcForage = pool.makeClass("Default");
+        try {
+            ctcForage = pool.get("com.wurmonline.server.behaviours.Forage");
+        } catch (NotFoundException e) {
+            e.printStackTrace();
+        }
+        CtClass ctcString = pool.makeClass("Default");
+        try {
+            ctcString = pool.get("java.lang.String");
+        } catch (NotFoundException e) {
+            e.printStackTrace();
+        }
+        CtClass ctcGrowthStage = pool.makeClass("Default");
+        try {
+            ctcGrowthStage = pool.get("com.wurmonline.mesh.GrassData$GrowthStage");
+        } catch (NotFoundException e) {
+            e.printStackTrace();
+        }
+        CtClass ctcModifiedBy = pool.makeClass("Default");
+        try {
+            ctcModifiedBy = pool.get("com.wurmonline.server.behaviours.ModifiedBy");
+        } catch (NotFoundException e) {
+            e.printStackTrace();
+        }
+        CtClass ctcForageJDB = pool.makeClass("Default");
+        try {
+            ctcForageJDB = pool.get("com.Joedobo27.WUmod.ForageJDB");
+        } catch (NotFoundException e) {
+            e.printStackTrace();
+        }
+
         ClassFile cfWurmColor = ctcWurmColor.getClassFile();
         ConstPool cpWurmColor = cfWurmColor.getConstPool();
 
