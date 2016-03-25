@@ -18,9 +18,13 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-@SuppressWarnings("unused")
+@SuppressWarnings({"unused", "FieldCanBeLocal"})
 public class WurminianPacifistMod implements WurmMod, Initable, Configurable, ServerStartedListener, ItemTemplatesCreatedListener {
 
+    private Field EMPTY_FIELD;
+    private Logger logger = Logger.getLogger(WurminianPacifistMod.class.getName());
+
+    //<editor-fold desc="Configure controls.">
     private boolean craftCottonPelt = false;
     private int towelX = 5;
     private int towelY = 10;
@@ -44,14 +48,30 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
     private int waxGourdID;
     private boolean craftCottonToolBelt = false;
     private int cottonToolbeltID;
+    //</editor-fold>
 
-    private Field EMPTY_FIELD;
+    //<editor-fold desc="Bytecode objects">
+    private ClassPool pool;
+    private CtClass ctcSelf;
+    private CtClass ctcWurmColor;
+    private ClassFile cfWurmColor;
+    private ConstPool cpWurmColor;
+    private CtClass ctcForage;
+    private CtClass ctcForageJDB;
+    private CtClass ctcForageData;
+    private CtClass ctcForageDataJDB;
+    private CtClass ctcServer;
+    private CtClass ctcString;
+    private CtClass ctcGrowthStage;
+    private CtClass ctcModifiedBy;
+    //</editor-fold>
 
+    //<editor-fold desc="Javassist objects">
     private CodeAttribute getCompositeColorAttribute;
     private CodeIterator getCompositeColorIterator;
     private MethodInfo getCompositeColorMInfo;
+    //</editor-fold>
 
-    private Logger logger = Logger.getLogger(WurminianPacifistMod.class.getName());
 
     @Override
     public void configure(Properties properties) {
@@ -394,7 +414,7 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
                     ItemList.glimmerSteelBar,ItemList.knifeBladeButchering,false,true,0.0f,false,false,CreationCategories.TOOL_PARTS);
             CreationEntry knifeBladeButcheringSery = CreationEntryCreator.createSimpleEntry(SkillList.SMITHING_BLACKSMITHING,ItemList.anvilSmall,
                     ItemList.seryllBar,ItemList.knifeBladeButchering,false,true,0.0f,false,false,CreationCategories.TOOL_PARTS);
-            
+
             CreationEntry KnifeCarving = CreationEntryCreator.createSimpleEntry(SkillList.SMITHING_BLACKSMITHING,ItemList.woodenHandleSword,
                     ItemList.knifeBladeCarving,ItemList.knifeCarving,true,true,0.0f,false,false,CreationCategories.TOOLS);
             CreationEntry knifeBladeCarvingIron = CreationEntryCreator.createSimpleEntry(SkillList.SMITHING_BLACKSMITHING,ItemList.anvilSmall,
@@ -407,7 +427,7 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
                     ItemList.glimmerSteelBar,ItemList.knifeBladeCarving,false,true,0.0f,false,false,CreationCategories.TOOL_PARTS);
             CreationEntry knifeBladeCarvingSery = CreationEntryCreator.createSimpleEntry(SkillList.SMITHING_BLACKSMITHING,ItemList.anvilSmall,
                     ItemList.seryllBar,ItemList.knifeBladeCarving,false,true,0.0f,false,false,CreationCategories.TOOL_PARTS);
-            
+
             CreationEntry scythe = CreationEntryCreator.createSimpleEntry(SkillList.SMITHING_BLACKSMITHING,ItemList.shaft,
                     ItemList.scytheBlade,ItemList.scythe,true,true,0.0f,false,false,CreationCategories.TOOLS);
             CreationEntry scytheBladeIron = CreationEntryCreator.createSimpleEntry(SkillList.SMITHING_BLACKSMITHING,ItemList.anvilLarge,
@@ -420,7 +440,7 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
                     ItemList.glimmerSteelBar,ItemList.scytheBlade,false,true,0.0f,false,false,CreationCategories.TOOL_PARTS);
             CreationEntry scytheBladeSery = CreationEntryCreator.createSimpleEntry(SkillList.SMITHING_BLACKSMITHING,ItemList.anvilLarge,
                     ItemList.seryllBar,ItemList.scytheBlade,false,true,0.0f,false,false,CreationCategories.TOOL_PARTS);
-            
+
             CreationEntry sickle = CreationEntryCreator.createSimpleEntry(SkillList.SMITHING_BLACKSMITHING,ItemList.woodenHandleSword,
                     ItemList.sickleBlade,ItemList.sickle,true,true,0.0f,false,false,CreationCategories.TOOLS);
             CreationEntry sickleBladeIron = CreationEntryCreator.createSimpleEntry(SkillList.SMITHING_BLACKSMITHING,ItemList.anvilLarge,
@@ -446,107 +466,39 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
         jaseBT jbt1;
 
 
-        ClassPool pool = HookManager.getInstance().getClassPool();
+        pool = HookManager.getInstance().getClassPool();
+        setJSSelf();
+        setJSWurmColor();
+        setJSForage();
+        setJSServer();
 
-        CtClass ctcWurmColor = pool.makeClass("Default");
-        try {
-            ctcWurmColor = pool.get("com.wurmonline.server.items.WurmColor");
-        } catch (NotFoundException e) {
-            e.printStackTrace();
-        }
+        setJSString();
+        setJSGrowthStage();
+        setJSModifiedBy();
 
-        CtClass ctcForage = pool.makeClass("Default");
-        try {
-            ctcForage = pool.get("com.wurmonline.server.behaviours.Forage");
-        } catch (NotFoundException e) {
-            e.printStackTrace();
-        }
-        CtClass ctcString = pool.makeClass("Default");
-        try {
-            ctcString = pool.get("java.lang.String");
-        } catch (NotFoundException e) {
-            e.printStackTrace();
-        }
-        CtClass ctcGrowthStage = pool.makeClass("Default");
-        try {
-            ctcGrowthStage = pool.get("com.wurmonline.mesh.GrassData$GrowthStage");
-        } catch (NotFoundException e) {
-            e.printStackTrace();
-        }
-        CtClass ctcModifiedBy = pool.makeClass("Default");
-        try {
-            ctcModifiedBy = pool.get("com.wurmonline.server.behaviours.ModifiedBy");
-        } catch (NotFoundException e) {
-            e.printStackTrace();
-        }
-        CtClass ctcForageJDB = pool.makeClass("Default");
-        try {
-            ctcForageJDB = pool.get("com.Joedobo27.WUmod.ForageJDB");
-        } catch (NotFoundException e) {
-            e.printStackTrace();
-        }
-
-        ClassFile cfWurmColor = ctcWurmColor.getClassFile();
-        ConstPool cpWurmColor = cfWurmColor.getConstPool();
 
         if (redDyeFromMadder || craftGourdCanteen || gourdWax) {
             // Convert WU's Forage.class from Enum to ArrayList<Object[]>.
-            //CtMethod ctmSetForageData = null;
-            CtMethod ctmSetForageData1 = new CtMethod(CtClass.voidType,"",new CtClass[]{}, ctcForage);
-            try {
-                ctmSetForageData1 = ctcForageJDB.getMethod("setForageData", "()V");
-            } catch (NotFoundException e) {
-                e.printStackTrace();
-            }
-            ClassMap map = new ClassMap();
-            map.put(ctcForageJDB.getClass().getName(), ctcForage.getClass().getName());
-            CtMethod ctmSetForageData = new CtMethod(CtClass.voidType, "setForageData", new CtClass[]{},ctcForage);
-            try {
-                ctmSetForageData.setBody(ctmSetForageData1, map);
-            } catch (CannotCompileException e) {
-                e.printStackTrace();
-            }
-            CtField ctfForageDescriptor = null;
-            CtField ctfForageOrdinal = null;
-            CtField ctfFORAGE_DEFAULT = null;
-            CtField ctfForageData = null;
-            try {
-                ctfForageDescriptor = CtField.make("private String forageDescriptor;", ctcForage);
-                ctfForageOrdinal = CtField.make("private int forageOrdinal;", ctcForage);
-                //ctfFORAGE_DEFAULT = CtField.make(
-                //        "private static Forage FORAGE_DEFAULT = new Forage(\"\",0,(byte)0,GrassData.GrowthStage.SHORT,(short)0, 0, (byte)0, 0, 0, 0, 0, ModifiedBy.NOTHING, 0);",
-                //        ctcForage);
-                ctfForageData = CtField.make("public static java.util.ArrayList forageData;", ctcForage);
-            } catch (CannotCompileException e) {
-                e.printStackTrace();
-            }
-            try {
-                ctcForage.addField(ctfForageDescriptor);
-                ctcForage.addField(ctfForageOrdinal);
-                //ctcForage.addField(ctfFORAGE_DEFAULT);
-                ctcForage.addField(ctfForageData);
-            } catch (CannotCompileException e) {
-                e.printStackTrace();
-            }
+            // CtMethod ctmSetForageData = null;
+            setJSAlwaysForage();
 
-            CtConstructor ctnForage = new CtConstructor(new CtClass[]{},ctcForage);
-            CtConstructor ctnForageJDB = new CtConstructor(new CtClass[]{},ctcForageJDB);
             try {
-                //(Ljava/lang/String;IBLcom/wurmonline/mesh/GrassData$GrowthStage;SIBIIIILcom/wurmonline/server/behaviours/ModifiedBy;I)V
-                ctnForage = ctcForage.getDeclaredConstructor(new CtClass[]{ctcString, CtClass.intType, CtClass.byteType,
-                    ctcGrowthStage, CtClass.shortType, CtClass.intType, CtClass.byteType, CtClass.intType, CtClass.intType, CtClass.intType, CtClass.intType,
-                    ctcModifiedBy, CtClass.intType});
-                ctnForageJDB = ctcForageJDB.getConstructor(
-                        "(Ljava/lang/String;IBLcom/wurmonline/mesh/GrassData$GrowthStage;SIBIIIILcom/wurmonline/server/behaviours/ModifiedBy;I)V");
-            } catch (NotFoundException e) {
-                e.printStackTrace();
-            }
-            try {
-                ctnForage.setBody(ctnForageJDB, map);
-            } catch (CannotCompileException e) {
-                e.printStackTrace();
-            }
+                ClassMap mapForageJDB = new ClassMap();
+                mapForageJDB.put(ctcForageJDB.getClass().getName(), ctcForage.getClass().getName());
+                CtClass ctcForageNew = pool.getAndRename("com.Joedobo27.WUmod.ForageJDB", "com.wurmonline.server.behaviours.Forage");
+                ctcForageNew.replaceClassName(mapForageJDB);
+                ctcForageNew.rebuildClassFile();
+                ctcForageNew.writeFile("com.wurmonline.server.behaviours.Forage");
 
+                ctcForageData = pool.getAndRename(ctcForageDataJDB.getClass().getName(), "com.wurmonline.server.behaviours.ForageData");
+                ClassMap mapForageDataJDB = new ClassMap();
+                mapForageDataJDB.put(ctcForageDataJDB.getClass().getName(), ctcForageData.getClass().getName());
+                ctcForageData.replaceClassName(mapForageDataJDB);
+                ctcForageData.rebuildClassFile();
+                ctcForageData.writeFile("com.wurmonline.server.behaviours.ForageData");
+            } catch (NotFoundException | CannotCompileException | IOException e) {
+                e.printStackTrace();
+            }
 
             if (redDyeFromMadder) {
                 setGetCompositeColor(cfWurmColor, "(IIIF)I", "getCompositeColor");
@@ -590,64 +542,138 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
             */
         }
     }
+    //<editor-fold desc="Javassist and bytecode altering section.">
+    private void setJSSelf() {
+    try {
+        this.ctcSelf = pool.get(this.getClass().getName());
+    } catch (NotFoundException e) {
+        e.printStackTrace();
+    }
+}
 
-    public void setWaxGourdID(int waxGourdID) {
+    private void setJSWurmColor() {
+        try {
+            this.ctcWurmColor = pool.get("com.wurmonline.server.items.WurmColor");
+        } catch (NotFoundException e) {
+            e.printStackTrace();
+        }
+        this.cfWurmColor = ctcWurmColor.getClassFile();
+        this.cpWurmColor = cfWurmColor.getConstPool();
+    }
+
+    private void setJSForage() {
+        try {
+            ctcForage = pool.get("com.wurmonline.server.behaviours.Forage");
+            ctcForageJDB = pool.get("com.Joedobo27.WUmod.ForageJDB");
+            ctcForageDataJDB = pool.get("com.Joedobo27.WUmod.ForageDataJDB");
+
+        } catch (NotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void setJSServer() {
+        try {
+            ctcServer = pool.get("com.wurmonline.server.Server");
+        } catch (NotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void setJSString() {
+        try {
+            ctcString = pool.get("java.lang.String");
+        } catch (NotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void setJSGrowthStage() {
+        try {
+            ctcGrowthStage = pool.get("com.wurmonline.mesh.GrassData$GrowthStage");
+        } catch (NotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void setJSModifiedBy() {
+        try {
+            ctcModifiedBy = pool.get("com.wurmonline.server.behaviours.ModifiedBy");
+        } catch (NotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void setJSAlwaysForage(){
+        try {
+            CtMethod ctmIsForagable = ctcServer.getMethod("isForagable", "(II)Z");
+            ctmIsForagable.setBody("{ return true; }");
+            CtMethod ctmIsBotanizable = ctcServer.getMethod("isBotanizable", "(II)Z");
+            ctmIsBotanizable.setBody("{ return true; }");
+        } catch (NotFoundException | CannotCompileException e){
+            e.printStackTrace();
+        }
+
+    }
+
+    //</editor-fold>
+    private void setWaxGourdID(int waxGourdID) {
         this.waxGourdID = waxGourdID;
     }
 
-    public int getWaxGourdID() {
+    private int getWaxGourdID() {
         return waxGourdID;
     }
 
-    public void setTowelItemID(int towelItemID) {
+    private void setTowelItemID(int towelItemID) {
         this.towelItemID = towelItemID;
     }
 
-    public int getTowelItemID() {
+    private int getTowelItemID() {
         return towelItemID;
     }
 
-    public void setCottonBedID(int cottonBedID) {
+    private void setCottonBedID(int cottonBedID) {
         this.cottonBedID = cottonBedID;
     }
 
-    public int getCottonBedID() {
+    private int getCottonBedID() {
         return cottonBedID;
     }
 
-    public void setMadderID(int madderID) {
+    private void setMadderID(int madderID) {
         this.madderID = madderID;
     }
 
-    public int getMadderID() {
+    private int getMadderID() {
         return madderID;
     }
 
-    public void setCheeseDrillID(int cheeseDrillID) {
+    private void setCheeseDrillID(int cheeseDrillID) {
         this.cheeseDrillID = cheeseDrillID;
     }
 
-    public int getCheeseDrillID() {
+    private int getCheeseDrillID() {
         return cheeseDrillID;
     }
 
-    public void setNettleTeaID(int nettleTeaID) {
+    private void setNettleTeaID(int nettleTeaID) {
         this.nettleTeaID = nettleTeaID;
     }
 
-    public int getNettleTeaID() {
+    private int getNettleTeaID() {
         return nettleTeaID;
     }
 
-    public void setCottonToolbeltID(int cottonToolbeltID) {
+    private void setCottonToolbeltID(int cottonToolbeltID) {
         this.cottonToolbeltID = cottonToolbeltID;
     }
 
-    public int getCottonToolbeltID() {
+    private int getCottonToolbeltID() {
         return cottonToolbeltID;
     }
 
-    public void setGetCompositeColor(ClassFile cf, String desc, String name){
+    private void setGetCompositeColor(ClassFile cf, String desc, String name){
         if (this.getCompositeColorMInfo == null || this.getCompositeColorIterator == null || this.getCompositeColorAttribute == null){
             for (List a : new List[]{cf.getMethods()}){
                 for (Object b : a){
@@ -666,15 +692,15 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
         }
     }
 
-    public CodeIterator getGetCompositeColorIterator() {
+    private CodeIterator getGetCompositeColorIterator() {
         return getCompositeColorIterator;
     }
 
-    public CodeAttribute getGetCompositeColorAttribute() {
+    private CodeAttribute getGetCompositeColorAttribute() {
         return getCompositeColorAttribute;
     }
 
-    public MethodInfo getGetCompositeColorMInfo() {
+    private MethodInfo getGetCompositeColorMInfo() {
         return getCompositeColorMInfo;
     }
 }
