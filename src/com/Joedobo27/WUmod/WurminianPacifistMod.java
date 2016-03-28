@@ -1,5 +1,8 @@
 package com.Joedobo27.WUmod;
 
+import com.wurmonline.mesh.GrassData;
+import com.wurmonline.mesh.Tiles;
+import com.wurmonline.server.behaviours.ModifiedBy;
 import com.wurmonline.server.items.*;
 import com.wurmonline.server.skills.SkillList;
 import javassist.*;
@@ -13,7 +16,9 @@ import org.gotti.wurmunlimited.modsupport.ItemTemplateBuilder;
 
 
 import java.io.IOException;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -23,6 +28,7 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
 
     private Field EMPTY_FIELD;
     private Logger logger = Logger.getLogger(WurminianPacifistMod.class.getName());
+    private Class forageDataClazz;
 
     //<editor-fold desc="Configure controls.">
     private boolean craftCottonPelt = false;
@@ -61,9 +67,6 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
     private CtClass ctcForageData;
     private CtClass ctcForageDataJDB;
     private CtClass ctcServer;
-    private CtClass ctcString;
-    private CtClass ctcGrowthStage;
-    private CtClass ctcModifiedBy;
     //</editor-fold>
 
     //<editor-fold desc="Javassist objects">
@@ -324,6 +327,30 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
             cottonToolBelt.setDepleteFromTarget(1500);
         }
         if (redDyeFromMadder || craftGourdCanteen) {
+            try {
+                ArrayList entries = ReflectionUtil.getPrivateField(forageDataClazz, ReflectionUtil.getField(forageDataClazz, "entries"));
+                Constructor forageDataIni = forageDataClazz.getConstructor(String.class, Integer.TYPE, Byte.TYPE, GrassData.GrowthStage.class,
+                        Short.TYPE, Integer.TYPE, Byte.TYPE, Integer.TYPE, Integer.TYPE, Integer.TYPE, Integer.TYPE, ModifiedBy.class,
+                        Integer.TYPE);
+                entries.add(forageDataIni.newInstance("GSHORT_WAX_GOURD", 1000, Tiles.Tile.TILE_GRASS.id, GrassData.GrowthStage.SHORT, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
+                entries.add(forageDataIni.newInstance("GMED_WAX_GOURD", 1001, Tiles.Tile.TILE_GRASS.id, GrassData.GrowthStage.MEDIUM, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
+                entries.add(forageDataIni.newInstance("GTALL_WAX_GOURD", 1002, Tiles.Tile.TILE_GRASS.id, GrassData.GrowthStage.TALL, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
+                entries.add(forageDataIni.newInstance("GWILD_WAX_GOURD", 1003, Tiles.Tile.TILE_GRASS.id, GrassData.GrowthStage.WILD, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
+                entries.add(forageDataIni.newInstance("STEPPE_WAX_GOURD", 1004, Tiles.Tile.TILE_STEPPE.id, GrassData.GrowthStage.SHORT, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
+                entries.add(forageDataIni.newInstance("MARSH_WAX_GOURD", 1005, Tiles.Tile.TILE_MARSH.id, GrassData.GrowthStage.SHORT, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
+                entries.add(forageDataIni.newInstance("TSHORT_WAX_GOURD", 1006, Tiles.Tile.TILE_TREE.id, GrassData.GrowthStage.SHORT, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
+                entries.add(forageDataIni.newInstance("TMED_WAX_GOURD", 1007, Tiles.Tile.TILE_TREE.id, GrassData.GrowthStage.MEDIUM, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
+                entries.add(forageDataIni.newInstance("TTALL_WAX_GOURD", 1008, Tiles.Tile.TILE_TREE.id, GrassData.GrowthStage.TALL, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
+                entries.add(forageDataIni.newInstance("BSHORT_WAX_GOURD", 1009, Tiles.Tile.TILE_BUSH.id, GrassData.GrowthStage.SHORT, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
+                entries.add(forageDataIni.newInstance("BMED_WAX_GOURD", 1010, Tiles.Tile.TILE_BUSH.id, GrassData.GrowthStage.MEDIUM, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
+                entries.add(forageDataIni.newInstance("BTALL_WAX_GOURD", 1011, Tiles.Tile.TILE_BUSH.id, GrassData.GrowthStage.TALL, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
+
+
+            } catch (NoSuchFieldException | NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
+                e.printStackTrace();
+            }
+
+
             if (redDyeFromMadder) {
                 CreationEntry redMadder = CreationEntryCreator.createSimpleEntry(SkillList.ALCHEMY_NATURAL, ItemList.water,
                         getMadderID(), ItemList.dyeRed, true, true, 0.0f, false, false, CreationCategories.DYES);
@@ -465,41 +492,17 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
         jaseBT jbt;
         jaseBT jbt1;
 
-
         pool = HookManager.getInstance().getClassPool();
         setJSSelf();
         setJSWurmColor();
         setJSForage();
         setJSServer();
 
-        setJSString();
-        setJSGrowthStage();
-        setJSModifiedBy();
-
-
         if (redDyeFromMadder || craftGourdCanteen || gourdWax) {
-            // Convert WU's Forage.class from Enum to ArrayList<Object[]>.
-            // CtMethod ctmSetForageData = null;
+            // Testing tool to make it so a tile can always be foraged or botanized.
             setJSAlwaysForage();
-
-            try {
-                ClassMap mapForageJDB = new ClassMap();
-                mapForageJDB.put(ctcForageJDB.getClass().getName(), ctcForage.getClass().getName());
-                CtClass ctcForageNew = pool.getAndRename("com.Joedobo27.WUmod.ForageJDB", "com.wurmonline.server.behaviours.Forage");
-                ctcForageNew.replaceClassName(mapForageJDB);
-                ctcForageNew.rebuildClassFile();
-                ctcForageNew.writeFile("com.wurmonline.server.behaviours.Forage");
-
-                ctcForageData = pool.getAndRename(ctcForageDataJDB.getClass().getName(), "com.wurmonline.server.behaviours.ForageData");
-                ClassMap mapForageDataJDB = new ClassMap();
-                mapForageDataJDB.put(ctcForageDataJDB.getClass().getName(), ctcForageData.getClass().getName());
-                ctcForageData.replaceClassName(mapForageDataJDB);
-                ctcForageData.rebuildClassFile();
-                ctcForageData.writeFile("com.wurmonline.server.behaviours.ForageData");
-            } catch (NotFoundException | CannotCompileException | IOException e) {
-                e.printStackTrace();
-            }
-
+            // Convert WU's Forage.class from Enum to ArrayList of Forage-objects.
+            setJSForageOverwrite();
             if (redDyeFromMadder) {
                 setGetCompositeColor(cfWurmColor, "(IIIF)I", "getCompositeColor");
                 try {
@@ -580,30 +583,6 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
         }
     }
 
-    private void setJSString() {
-        try {
-            ctcString = pool.get("java.lang.String");
-        } catch (NotFoundException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void setJSGrowthStage() {
-        try {
-            ctcGrowthStage = pool.get("com.wurmonline.mesh.GrassData$GrowthStage");
-        } catch (NotFoundException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void setJSModifiedBy() {
-        try {
-            ctcModifiedBy = pool.get("com.wurmonline.server.behaviours.ModifiedBy");
-        } catch (NotFoundException e) {
-            e.printStackTrace();
-        }
-    }
-
     private void setJSAlwaysForage(){
         try {
             CtMethod ctmIsForagable = ctcServer.getMethod("isForagable", "(II)Z");
@@ -614,6 +593,32 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
             e.printStackTrace();
         }
 
+    }
+
+    private void setJSForageOverwrite(){
+        try {
+            ctcForageData = pool.getAndRename("com.Joedobo27.WUmod.ForageDataJDB", "com.wurmonline.server.behaviours.ForageData");
+            ClassMap cmForageData = new ClassMap();
+            cmForageData.put("com.Joedobo27.WUmod.ForageDataJDB", "com.wurmonline.server.behaviours.ForageData");
+            ctcForageData.replaceClassName(cmForageData);
+            ctcForageData.rebuildClassFile();
+
+
+            ClassMap cmForage = new ClassMap();
+            cmForage.put("com.Joedobo27.WUmod.ForageJDB", "com.wurmonline.server.behaviours.Forage");
+            CtClass ctcForageNew = pool.getAndRename("com.Joedobo27.WUmod.ForageJDB", "com.wurmonline.server.behaviours.Forage");
+            ctcForageNew.replaceClassName(cmForage);
+            ctcForageNew.replaceClassName(cmForageData);
+            ctcForageNew.rebuildClassFile();
+
+            ctcForageData.writeFile();
+            ctcForageNew.writeFile();
+            forageDataClazz = ctcForageData.toClass();
+
+
+        } catch (NotFoundException | CannotCompileException | IOException e) {
+            e.printStackTrace();
+        }
     }
 
     //</editor-fold>

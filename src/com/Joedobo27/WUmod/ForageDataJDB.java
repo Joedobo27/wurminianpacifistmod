@@ -12,8 +12,8 @@ public class ForageDataJDB {
     int ordinal;
     byte tileType;
     GrassData.GrowthStage grassLength;
-    short category;
-    int itemType;
+    short category; // A number from com.wurmonline.server.behaviours.Actions
+    int itemType; // templateId from com.wurmonline.server.items.ItemTemplateCreator
     byte material;
     int chanceAt1;
     int chanceAt100;
