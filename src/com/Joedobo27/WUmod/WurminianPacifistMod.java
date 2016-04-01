@@ -28,7 +28,6 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
 
     private Field EMPTY_FIELD;
     private Logger logger = Logger.getLogger(WurminianPacifistMod.class.getName());
-    private Class forageDataClazz;
 
     //<editor-fold desc="Configure controls.">
     private boolean craftCottonPelt = false;
@@ -49,9 +48,11 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
     private boolean cheeseDrillWithCloth = false;
     private int nettleTeaID;
     private int cheeseDrillID;
-    private boolean craftGourdCanteen = false;
-    private boolean gourdWax = false;
     private int waxGourdID;
+    private boolean craftGourdCanteen = false;
+    private int gourdCanteenID;
+    private boolean craftGourdWax = false;
+    private int waxID;
     private boolean craftCottonToolBelt = false;
     private int cottonToolbeltID;
     //</editor-fold>
@@ -66,13 +67,26 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
     private CtClass ctcForageJDB;
     private CtClass ctcForageData;
     private CtClass ctcForageDataJDB;
+    private Class forageDataClazz;
+    private CtClass ctcHerb;
+    private CtClass ctcHerbJDB;
+    private CtClass ctcHerbData;
+    private CtClass ctcHerbDataJDB;
+    private Class herbDataClazz;
     private CtClass ctcServer;
+    private CtClass ctcCreationEntry;
+    private ClassFile cfCreationEntry;
+    private ConstPool cpCreationEntry;
     //</editor-fold>
 
     //<editor-fold desc="Javassist objects">
     private CodeAttribute getCompositeColorAttribute;
     private CodeIterator getCompositeColorIterator;
     private MethodInfo getCompositeColorMInfo;
+
+    private MethodInfo checkSaneAmountsMInfo;
+    private CodeAttribute checkSaneAmountsAttribute;
+    private CodeIterator checkSaneAmountsIterator;
     //</editor-fold>
 
 
@@ -92,13 +106,12 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
         redDyeFromMadder = Boolean.valueOf(properties.getProperty("redDyeFromMadder", Boolean.toString(redDyeFromMadder)));
         cheeseDrillWithCloth = Boolean.valueOf(properties.getProperty("cheeseDrillWithCloth", Boolean.toString(cheeseDrillWithCloth)));
         craftGourdCanteen = Boolean.valueOf(properties.getProperty("craftGourdCanteen", Boolean.toString(craftGourdCanteen)));
-        gourdWax = Boolean.valueOf(properties.getProperty("gourdWax", Boolean.toString(gourdWax)));
+        craftGourdWax = Boolean.valueOf(properties.getProperty("craftGourdWax", Boolean.toString(craftGourdWax)));
         craftCottonToolBelt = Boolean.valueOf(properties.getProperty("craftCottonToolBelt", Boolean.toString(craftCottonToolBelt)));
     }
 
     @Override
     public void onItemTemplatesCreated() {
-
         if (craftCottonPelt) {
             ItemTemplateBuilder towel = new ItemTemplateBuilder("jdbTowel");
             setTowelItemID(IdFactory.getIdFor("jdbTowel", IdType.ITEMTEMPLATE));
@@ -154,7 +167,7 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
             }
         }
         if (redDyeFromMadder) {
-            // for now, using lovage's graphic and woad's details.
+            // for now, using lovage's graphic and MADDER's details.
             ItemTemplateBuilder madder = new ItemTemplateBuilder("jdbMadder");
             setMadderID(IdFactory.getIdFor("jdbMadder", IdType.ITEMTEMPLATE));
             madder.name("Madder", "Madders", "A plant with vibrant red roots.");
@@ -263,7 +276,7 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
                 e.printStackTrace();
             }
         }
-        if (craftGourdCanteen || gourdWax){
+        if (craftGourdCanteen || craftGourdWax){
             ItemTemplateBuilder waxGourd = new ItemTemplateBuilder("jdbWaxGourd");
             setWaxGourdID(IdFactory.getIdFor("jdbWaxGourd", IdType.ITEMTEMPLATE));
             waxGourd.name("Wax gourd", "Wax gourds", "A hard shelled gourd with a narrow top and ball shaped bottom. Wax appears to be leaching out around it's stem.");
@@ -274,18 +287,43 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
             waxGourd.behaviourType((short) 16);
             waxGourd.combatDamage(0);
             waxGourd.decayTime(28800L);
-            waxGourd.dimensions(10, 10, 10);
+            waxGourd.dimensions(10, 10, 20);
             waxGourd.primarySkill(-10);
             //waxGourd.bodySpaces();
             waxGourd.modelName("model.food.pumpkin.");
             waxGourd.difficulty(200.0f);
-            waxGourd.weightGrams(1000);
+            waxGourd.weightGrams(100);
             waxGourd.material((byte)22);
             waxGourd.value(10);
             waxGourd.isTraded(true);
             //waxGourd.armourType();
             try {
                 waxGourd.build();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            ItemTemplateBuilder gourdCanteen = new ItemTemplateBuilder("jdbGourdCanteen");
+            setGourdCanteenID(IdFactory.getIdFor("jdbGourdCanteen", IdType.ITEMTEMPLATE));
+            gourdCanteen.name("Gourd canteen", "Gourd canteens", "A hollowed out gourd for holding liquids.");
+            gourdCanteen.size(3);
+            //gourdCanteen.descriptions();
+            gourdCanteen.itemTypes(new short[] { 108, 44, 21, 1, 33, 147 });
+            gourdCanteen.imageNumber((short) 240);
+            gourdCanteen.behaviourType((short) 1);
+            gourdCanteen.combatDamage(0);
+            gourdCanteen.decayTime(3024000L);
+            gourdCanteen.dimensions(10, 10, 20);
+            gourdCanteen.primarySkill(-10);
+            //gourdCanteen.bodySpaces();
+            gourdCanteen.modelName("model.tool.waterskin.");
+            gourdCanteen.difficulty(20.0f);
+            gourdCanteen.weightGrams(100);
+            gourdCanteen.material((byte)14);
+            gourdCanteen.value(10000);
+            gourdCanteen.isTraded(true);
+            //gourdCanteen.armourType();
+            try {
+                gourdCanteen.build();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -326,38 +364,16 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
                     getCottonToolbeltID(), true, true, 0.0f, false, false, CreationCategories.CLOTHES);
             cottonToolBelt.setDepleteFromTarget(1500);
         }
-        if (redDyeFromMadder || craftGourdCanteen) {
-            try {
-                ArrayList entries = ReflectionUtil.getPrivateField(forageDataClazz, ReflectionUtil.getField(forageDataClazz, "entries"));
-                Constructor forageDataIni = forageDataClazz.getConstructor(String.class, Integer.TYPE, Byte.TYPE, GrassData.GrowthStage.class,
-                        Short.TYPE, Integer.TYPE, Byte.TYPE, Integer.TYPE, Integer.TYPE, Integer.TYPE, Integer.TYPE, ModifiedBy.class,
-                        Integer.TYPE);
-                entries.add(forageDataIni.newInstance("GSHORT_WAX_GOURD", 1000, Tiles.Tile.TILE_GRASS.id, GrassData.GrowthStage.SHORT, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
-                entries.add(forageDataIni.newInstance("GMED_WAX_GOURD", 1001, Tiles.Tile.TILE_GRASS.id, GrassData.GrowthStage.MEDIUM, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
-                entries.add(forageDataIni.newInstance("GTALL_WAX_GOURD", 1002, Tiles.Tile.TILE_GRASS.id, GrassData.GrowthStage.TALL, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
-                entries.add(forageDataIni.newInstance("GWILD_WAX_GOURD", 1003, Tiles.Tile.TILE_GRASS.id, GrassData.GrowthStage.WILD, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
-                entries.add(forageDataIni.newInstance("STEPPE_WAX_GOURD", 1004, Tiles.Tile.TILE_STEPPE.id, GrassData.GrowthStage.SHORT, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
-                entries.add(forageDataIni.newInstance("MARSH_WAX_GOURD", 1005, Tiles.Tile.TILE_MARSH.id, GrassData.GrowthStage.SHORT, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
-                entries.add(forageDataIni.newInstance("TSHORT_WAX_GOURD", 1006, Tiles.Tile.TILE_TREE.id, GrassData.GrowthStage.SHORT, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
-                entries.add(forageDataIni.newInstance("TMED_WAX_GOURD", 1007, Tiles.Tile.TILE_TREE.id, GrassData.GrowthStage.MEDIUM, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
-                entries.add(forageDataIni.newInstance("TTALL_WAX_GOURD", 1008, Tiles.Tile.TILE_TREE.id, GrassData.GrowthStage.TALL, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
-                entries.add(forageDataIni.newInstance("BSHORT_WAX_GOURD", 1009, Tiles.Tile.TILE_BUSH.id, GrassData.GrowthStage.SHORT, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
-                entries.add(forageDataIni.newInstance("BMED_WAX_GOURD", 1010, Tiles.Tile.TILE_BUSH.id, GrassData.GrowthStage.MEDIUM, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
-                entries.add(forageDataIni.newInstance("BTALL_WAX_GOURD", 1011, Tiles.Tile.TILE_BUSH.id, GrassData.GrowthStage.TALL, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
-
-
-            } catch (NoSuchFieldException | NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
-                e.printStackTrace();
-            }
-
-
-            if (redDyeFromMadder) {
-                CreationEntry redMadder = CreationEntryCreator.createSimpleEntry(SkillList.ALCHEMY_NATURAL, ItemList.water,
-                        getMadderID(), ItemList.dyeRed, true, true, 0.0f, false, false, CreationCategories.DYES);
-
-            }
+        if (craftGourdCanteen) {
+            addWaxGourdForageReflection();
+            CreationEntry gourdCanteen = CreationEntryCreator.createSimpleEntry(SkillList.BUTCHERING, ItemList.knifeCarving, getWaxGourdID(),
+                    getGourdCanteenID(), false, true, 0.0f, false, false, CreationCategories.CONTAINER);
         }
-
+        if (redDyeFromMadder) {
+            addMadderHerbReflection();
+            CreationEntry redMadder = CreationEntryCreator.createSimpleEntry(SkillList.ALCHEMY_NATURAL, ItemList.water,
+                    getMadderID(), ItemList.dyeRed, true, true, 0.0f, false, false, CreationCategories.DYES);
+        }
         if (toolInWSToBS){
             ArrayList<Integer> created = new ArrayList<>(Arrays.asList(ItemList.knifeButchering, ItemList.knifeBladeButchering,
                     ItemList.knifeCarving, ItemList.knifeBladeCarving, ItemList.sickle, ItemList.sickleBlade,
@@ -390,7 +406,7 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
                 simpleEntries.remove(delete.getKey(), delete.getValue());
             }
 
-            // Remove all matrix entries for the combination of targets and created. Only those that match can be removed.
+            // Remove all matrix forageEntries for the combination of targets and created. Only those that match can be removed.
             // For example, many items have ironBar as as a target but we must only remove those that also match created.
             HashMap<Integer, List<CreationEntry>> toDeleteMatrix = new HashMap<>();
             List<CreationEntry> entries;
@@ -496,13 +512,15 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
         setJSSelf();
         setJSWurmColor();
         setJSForage();
+        setJSHerb();
         setJSServer();
 
-        if (redDyeFromMadder || craftGourdCanteen || gourdWax) {
+        if (redDyeFromMadder || craftGourdCanteen || craftGourdWax) {
             // Testing tool to make it so a tile can always be foraged or botanized.
-            setJSAlwaysForage();
-            // Convert WU's Forage.class from Enum to ArrayList of Forage-objects.
-            setJSForageOverwrite();
+            jsAlwaysForage();
+            // Convert WU's Forage.class and Herb.class from Enum to ArrayList.
+            jsForageOverwrite();
+            jsHerbOverwrite();
             if (redDyeFromMadder) {
                 setGetCompositeColor(cfWurmColor, "(IIIF)I", "getCompositeColor");
                 try {
@@ -575,6 +593,16 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
         }
     }
 
+    private void setJSHerb() {
+        try {
+            ctcHerb = pool.get("com.wurmonline.server.behaviours.Herb");
+            ctcHerbJDB = pool.get("com.Joedobo27.WUmod.HerbJDB");
+            ctcHerbDataJDB = pool.get("com.Joedobo27.WUmod.HerbDataJDB");
+        } catch (NotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
     private void setJSServer() {
         try {
             ctcServer = pool.get("com.wurmonline.server.Server");
@@ -583,7 +611,18 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
         }
     }
 
-    private void setJSAlwaysForage(){
+    private void setJSCreationEntry() {
+        ctcCreationEntry = pool.makeClass("Default");
+        try {
+            ctcCreationEntry = pool.get("com.wurmonline.server.items.CreationEntry");
+        } catch (NotFoundException e) {
+            e.printStackTrace();
+        }
+        cfCreationEntry = ctcCreationEntry.getClassFile();
+        cpCreationEntry = cfCreationEntry.getConstPool();
+    }
+
+    private void jsAlwaysForage(){
         try {
             CtMethod ctmIsForagable = ctcServer.getMethod("isForagable", "(II)Z");
             ctmIsForagable.setBody("{ return true; }");
@@ -595,14 +634,13 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
 
     }
 
-    private void setJSForageOverwrite(){
+    private void jsForageOverwrite(){
         try {
             ctcForageData = pool.getAndRename("com.Joedobo27.WUmod.ForageDataJDB", "com.wurmonline.server.behaviours.ForageData");
             ClassMap cmForageData = new ClassMap();
             cmForageData.put("com.Joedobo27.WUmod.ForageDataJDB", "com.wurmonline.server.behaviours.ForageData");
             ctcForageData.replaceClassName(cmForageData);
             ctcForageData.rebuildClassFile();
-
 
             ClassMap cmForage = new ClassMap();
             cmForage.put("com.Joedobo27.WUmod.ForageJDB", "com.wurmonline.server.behaviours.Forage");
@@ -614,14 +652,146 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
             ctcForageData.writeFile();
             ctcForageNew.writeFile();
             forageDataClazz = ctcForageData.toClass();
-
-
+            jaseBT.overwroteForage = true;
         } catch (NotFoundException | CannotCompileException | IOException e) {
             e.printStackTrace();
         }
     }
 
+    private void jsHerbOverwrite() {
+        try {
+            ctcHerbData = pool.getAndRename("com.Joedobo27.WUmod.HerbDataJDB", "com.wurmonline.server.behaviours.HerbData");
+            ClassMap cmHerbData = new ClassMap();
+            cmHerbData.put("com.Joedobo27.WUmod.HerbDataJDB", "com.wurmonline.server.behaviours.HerbData");
+            ctcHerbData.replaceClassName(cmHerbData);
+            ctcHerbData.rebuildClassFile();
+
+            ClassMap cmHerb = new ClassMap();
+            cmHerb.put("com.Joedobo27.WUmod.HerbJDB", "com.wurmonline.server.behaviours.Herb");
+            CtClass ctcHerbNew = pool.getAndRename("com.Joedobo27.WUmod.HerbJDB", "com.wurmonline.server.behaviours.Herb");
+            ctcHerbNew.replaceClassName(cmHerb);
+            ctcHerbNew.replaceClassName(cmHerbData);
+            ctcHerbNew.rebuildClassFile();
+
+            ctcHerbData.writeFile();
+            ctcHerbNew.writeFile();
+            herbDataClazz = ctcHerbData.toClass();
+            jaseBT.overwroteHerb = true;
+        } catch (NotFoundException | CannotCompileException | IOException e) {
+        e.printStackTrace();
+    }
+    }
+
+    private void jsCheckSaneAmountsExclusions(){
+        //<editor-fold desc="Change information.">
+                /*
+                Change checkSaneAmounts of CreationEntry to exclude certain items from a section that was bugging creation because of
+                1) combine for all 2)large weight difference between finished item and one or both materials.
+                Lines 387 - 401
+                - was: if (template.isCombine() && this.objectCreated != 73)
+                - becomes: if (template.isCombine() && !largeMaterialRatioDifferentials.contains(this.objectCreated)) {
+                  add a public static field of ArrayList to represent largeMaterialRatioDifferentials. Initialize the field with just
+                  ItemList.lye and use reflection to add other items relevant to the mod.
+                */
+        //</editor-fold>
+        jaseBT jbt;
+        jaseBT jbt1;
+        String replaceResult;
+        setCheckSaneAmounts(cfCreationEntry,
+                "(Lcom/wurmonline/server/items/Item;ILcom/wurmonline/server/items/Item;ILcom/wurmonline/server/items/ItemTemplate;Lcom/wurmonline/server/creatures/Creature;Z)V",
+                "checkSaneAmounts");
+        try {
+            getCheckSaneAmountsIterator().insertGap(395, 10);
+        } catch (BadBytecode badBytecode) {
+            badBytecode.printStackTrace();
+        }
+        jbt = new jaseBT();
+
+        jbt.setOpCodeStructure(new ArrayList<>(Arrays.asList(Opcode.ALOAD, Opcode.INVOKEVIRTUAL, Opcode.IFEQ, Opcode.NOP, Opcode.NOP,
+                Opcode.NOP, Opcode.NOP, Opcode.NOP, Opcode.NOP, Opcode.NOP, Opcode.NOP, Opcode.NOP, Opcode.NOP, Opcode.ALOAD_0,
+                Opcode.GETFIELD, Opcode.BIPUSH, Opcode.IF_ICMPEQ)));
+        jbt.setOperandStructure(new ArrayList<>(Arrays.asList("05",
+                jaseBT.findConstantPoolReference(cpCreationEntry, ConstPool.CONST_Methodref, "com/wurmonline/server/items/ItemTemplate.isCombine:()Z"),
+                "0038", "", "", "", "", "", "", "", "", "", "", "",
+                jaseBT.findConstantPoolReference(cpCreationEntry, ConstPool.CONST_Fieldref, "objectCreated:I"),
+                "49", "0025")));
+        jbt.setOpcodeOperand();
+        jbt1 = new jaseBT();
+        jbt1.setOpCodeStructure(new ArrayList<>(Arrays.asList(Opcode.ALOAD, Opcode.INVOKEVIRTUAL, Opcode.IFEQ, Opcode.ALOAD_0,
+                Opcode.GETFIELD, Opcode.LDC_W, Opcode.IF_ICMPEQ, Opcode.ALOAD_0, Opcode.GETFIELD, Opcode.BIPUSH, Opcode.IF_ICMPEQ)));
+        jbt1.setOperandStructure(new ArrayList<>(Arrays.asList("05",
+                jaseBT.findConstantPoolReference(cpCreationEntry, ConstPool.CONST_Methodref, "com/wurmonline/server/items/ItemTemplate.isCombine:()Z"),
+                "0038", "",
+                jaseBT.findConstantPoolReference(cpCreationEntry, ConstPool.CONST_Fieldref, "objectCreated:I"),
+                String.format("%04X", cpCreationEntry.addIntegerInfo(782) & 0xffff), "002e", "",
+                jaseBT.findConstantPoolReference(cpCreationEntry, ConstPool.CONST_Fieldref, "objectCreated:I"),
+                "49", "0025")));
+        jbt1.setOpcodeOperand();
+        replaceResult = jaseBT.byteCodeFindReplace(jbt.getOpcodeOperand(), jbt.getOpcodeOperand(), jbt1.getOpcodeOperand(), getCheckSaneAmountsIterator(),
+                "checkSaneAmounts");
+        //getCheckSaneAmountsAttribute().computeMaxStack();
+        try {
+            getCheckSaneAmountsMInfo().rebuildStackMapIf6(pool, cfCreationEntry);
+        } catch (BadBytecode badBytecode) {
+            badBytecode.printStackTrace();
+        }
+        logger.log(Level.INFO, replaceResult);
+    }
     //</editor-fold>
+
+    //<editor-fold desc="Reflection methods section.">
+    @SuppressWarnings("unchecked")
+    private void addWaxGourdForageReflection(){
+        try {
+            ArrayList forageEntries = ReflectionUtil.getPrivateField(forageDataClazz, ReflectionUtil.getField(forageDataClazz, "forageEntries"));
+            Constructor forageDataIni = forageDataClazz.getConstructor(String.class, Integer.TYPE, Byte.TYPE, GrassData.GrowthStage.class,
+                    Short.TYPE, Integer.TYPE, Byte.TYPE, Integer.TYPE, Integer.TYPE, Integer.TYPE, Integer.TYPE, ModifiedBy.class,
+                    Integer.TYPE);
+            forageEntries.add(forageDataIni.newInstance("GSHORT_WAX_GOURD", 1000, Tiles.Tile.TILE_GRASS.id, GrassData.GrowthStage.SHORT, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
+            forageEntries.add(forageDataIni.newInstance("GMED_WAX_GOURD", 1001, Tiles.Tile.TILE_GRASS.id, GrassData.GrowthStage.MEDIUM, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
+            forageEntries.add(forageDataIni.newInstance("GTALL_WAX_GOURD", 1002, Tiles.Tile.TILE_GRASS.id, GrassData.GrowthStage.TALL, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
+            forageEntries.add(forageDataIni.newInstance("GWILD_WAX_GOURD", 1003, Tiles.Tile.TILE_GRASS.id, GrassData.GrowthStage.WILD, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
+            forageEntries.add(forageDataIni.newInstance("STEPPE_WAX_GOURD", 1004, Tiles.Tile.TILE_STEPPE.id, GrassData.GrowthStage.SHORT, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
+            forageEntries.add(forageDataIni.newInstance("MARSH_WAX_GOURD", 1005, Tiles.Tile.TILE_MARSH.id, GrassData.GrowthStage.SHORT, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
+            forageEntries.add(forageDataIni.newInstance("TSHORT_WAX_GOURD", 1006, Tiles.Tile.TILE_TREE.id, GrassData.GrowthStage.SHORT, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
+            forageEntries.add(forageDataIni.newInstance("TMED_WAX_GOURD", 1007, Tiles.Tile.TILE_TREE.id, GrassData.GrowthStage.MEDIUM, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
+            forageEntries.add(forageDataIni.newInstance("TTALL_WAX_GOURD", 1008, Tiles.Tile.TILE_TREE.id, GrassData.GrowthStage.TALL, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
+            forageEntries.add(forageDataIni.newInstance("BSHORT_WAX_GOURD", 1009, Tiles.Tile.TILE_BUSH.id, GrassData.GrowthStage.SHORT, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
+            forageEntries.add(forageDataIni.newInstance("BMED_WAX_GOURD", 1010, Tiles.Tile.TILE_BUSH.id, GrassData.GrowthStage.MEDIUM, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
+            forageEntries.add(forageDataIni.newInstance("BTALL_WAX_GOURD", 1011, Tiles.Tile.TILE_BUSH.id, GrassData.GrowthStage.TALL, (short) 570, getWaxGourdID(), (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
+        } catch (NoSuchFieldException | NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void addMadderHerbReflection(){
+        try {
+            ArrayList herbEntries = ReflectionUtil.getPrivateField(herbDataClazz, ReflectionUtil.getField(herbDataClazz, "herbEntries"));
+            Constructor herbDataIni = herbDataClazz.getConstructor(String.class, Integer.TYPE, Byte.TYPE, GrassData.GrowthStage.class,
+                    Short.TYPE, Integer.TYPE, Byte.TYPE, Integer.TYPE, Integer.TYPE, Integer.TYPE, Integer.TYPE, ModifiedBy.class,
+                    Integer.TYPE);
+            herbEntries.add(herbDataIni.newInstance("GSHORT_MADDER", 1000, Tiles.Tile.TILE_GRASS.id, GrassData.GrowthStage.SHORT, (short) 575, getMadderID(), (byte) 0, 1, 6, 20, 15, ModifiedBy.NO_TREES, 10));
+            herbEntries.add(herbDataIni.newInstance("GMED_MADDER", 1001, Tiles.Tile.TILE_GRASS.id, GrassData.GrowthStage.MEDIUM, (short) 575, getMadderID(), (byte) 0, 1, 10, 20, 10, ModifiedBy.NO_TREES, 20));
+            herbEntries.add(herbDataIni.newInstance("GTALL_MADDER", 1002, Tiles.Tile.TILE_GRASS.id, GrassData.GrowthStage.TALL, (short) 575, getMadderID(), (byte) 0, 1, 20, 20, 5, ModifiedBy.NO_TREES, 30));
+            herbEntries.add(herbDataIni.newInstance("GWILD_MADDER", 1003, Tiles.Tile.TILE_GRASS.id, GrassData.GrowthStage.WILD, (short) 575, getMadderID(), (byte) 0, 1, 40, 20, 1, ModifiedBy.NO_TREES, 40));
+            herbEntries.add(herbDataIni.newInstance("STEPPE_MADDER", 1004, Tiles.Tile.TILE_STEPPE.id, GrassData.GrowthStage.SHORT, (short) 575, getMadderID(), (byte) 0, 10, 46, 20, 1, ModifiedBy.NO_TREES, 50));
+            herbEntries.add(herbDataIni.newInstance("MARSH_MADDER", 1005, Tiles.Tile.TILE_MARSH.id, GrassData.GrowthStage.SHORT, (short) 575, getMadderID(), (byte) 0, 6, 26, 20, 20, ModifiedBy.NO_TREES, 20));
+            herbEntries.add(herbDataIni.newInstance("MOSS_MADDER", 1006, Tiles.Tile.TILE_MOSS.id, GrassData.GrowthStage.SHORT, (short) 575, getMadderID(), (byte) 0, 6, 26, 20, 20, ModifiedBy.NO_TREES, 32));
+            herbEntries.add(herbDataIni.newInstance("PEAT_MADDER", 1007, Tiles.Tile.TILE_PEAT.id, GrassData.GrowthStage.SHORT, (short) 575, getMadderID(), (byte) 0, 6, 6, 20, 20, ModifiedBy.NO_TREES, 40));
+            herbEntries.add(herbDataIni.newInstance("TSHORT_MADDER", 1008, Tiles.Tile.TILE_TREE.id, GrassData.GrowthStage.SHORT, (short) 575, getMadderID(), (byte) 0, 6, 16, 30, 20, ModifiedBy.NOTHING, 0));
+            herbEntries.add(herbDataIni.newInstance("TMED_MADDER", 1009, Tiles.Tile.TILE_TREE.id, GrassData.GrowthStage.MEDIUM, (short) 575, getMadderID(), (byte) 0, 6, 16, 30, 10, ModifiedBy.NOTHING, 0));
+            herbEntries.add(herbDataIni.newInstance("TTALL_MADDER", 1010, Tiles.Tile.TILE_TREE.id, GrassData.GrowthStage.TALL, (short) 575, getMadderID(), (byte) 0, 6, 16, 30, 1, ModifiedBy.NOTHING, 0));
+            herbEntries.add(herbDataIni.newInstance("BSHORT_MADDER", 1011, Tiles.Tile.TILE_BUSH.id, GrassData.GrowthStage.SHORT, (short) 575, getMadderID(), (byte) 0, 6, 16, 20, 10, ModifiedBy.NOTHING, 0));
+            herbEntries.add(herbDataIni.newInstance("BMED_MADDER", 1012, Tiles.Tile.TILE_BUSH.id, GrassData.GrowthStage.MEDIUM, (short) 575, getMadderID(), (byte) 0, 6, 16, 20, 5, ModifiedBy.NOTHING, 0));
+            herbEntries.add(herbDataIni.newInstance("BTALL_MADDER", 1013, Tiles.Tile.TILE_BUSH.id, GrassData.GrowthStage.TALL, (short) 575, getMadderID(), (byte) 0, 6, 16, 20, 1, ModifiedBy.NOTHING, 0));
+        } catch (NoSuchFieldException | NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
+            e.printStackTrace();
+        }
+    }
+    //</editor-fold>
+
+    //<editor-fold desc="Get and Set ID's for created items.">
     private void setWaxGourdID(int waxGourdID) {
         this.waxGourdID = waxGourdID;
     }
@@ -678,6 +848,16 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
         return cottonToolbeltID;
     }
 
+    private void setGourdCanteenID(int gourdCanteenID) {
+        this.gourdCanteenID = gourdCanteenID;
+    }
+
+    private int getGourdCanteenID() {
+        return gourdCanteenID;
+    }
+    //</editor-fold>
+
+    //<editor-fold desc="Getter and Setter for CodeIterator, CodeAttribute, methodInfo.">
     private void setGetCompositeColor(ClassFile cf, String desc, String name){
         if (this.getCompositeColorMInfo == null || this.getCompositeColorIterator == null || this.getCompositeColorAttribute == null){
             for (List a : new List[]{cf.getMethods()}){
@@ -708,4 +888,30 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
     private MethodInfo getGetCompositeColorMInfo() {
         return getCompositeColorMInfo;
     }
+
+    private void setCheckSaneAmounts(ClassFile cf, String desc, String name) {
+        if (this.checkSaneAmountsMInfo == null || this.checkSaneAmountsIterator == null || this.checkSaneAmountsAttribute == null) {
+            for (List a : new List[]{cf.getMethods()}){
+                for(Object b : a){
+                    MethodInfo MInfo = (MethodInfo) b;
+                    if (Objects.equals(MInfo.getDescriptor(), desc) && Objects.equals(MInfo.getName(), name)){
+                        this.checkSaneAmountsMInfo = MInfo;
+                        break;
+                    }
+                }
+            }
+            if (this.checkSaneAmountsMInfo == null){
+                throw new NullPointerException();
+            }
+            this.checkSaneAmountsAttribute = this.checkSaneAmountsMInfo.getCodeAttribute();
+            this.checkSaneAmountsIterator = this.checkSaneAmountsAttribute.iterator();
+        }
+    }
+
+    private CodeIterator getCheckSaneAmountsIterator(){return this.checkSaneAmountsIterator;}
+
+    private CodeAttribute getCheckSaneAmountsAttribute(){return this.checkSaneAmountsAttribute;}
+
+    private MethodInfo getCheckSaneAmountsMInfo(){return this.checkSaneAmountsMInfo;}
+    //</editor-fold>
 }

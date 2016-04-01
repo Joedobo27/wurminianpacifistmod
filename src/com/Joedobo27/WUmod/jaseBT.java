@@ -20,6 +20,10 @@ class jaseBT {
     private ArrayList<String > operandStructure;
     private String opcodeOperand;
 
+    public static boolean modifiedCheckSaneAmounts = false;
+    public static boolean overwroteForage = false;
+    public static boolean overwroteHerb = false;
+
 
     /**
      * This method combines the values in opCodeStructure and operandStructure for its instance and sets the new value.
@@ -205,7 +209,7 @@ class jaseBT {
      *
      * AC,1064,3608 would be ["opCode":0xAC, "opCode":0x10 "opOperand1":0x64, "opCode":0x36 "opOperand1":0x08].
      *
-     * @param str A string representations of hexadecimal digits. Commas delimit ArrayList entries.
+     * @param str A string representations of hexadecimal digits. Commas delimit ArrayList forageEntries.
      * @return Return an ArrayList of HashMaps.
      */
     private static ArrayList<HashMap<String, Integer>> stringToArrayList(String str){
@@ -288,7 +292,7 @@ class jaseBT {
         for (String b:replaceSplit){
             for (int i=0; i < b.length()/2; i++){
                 int c = Short.valueOf(b.substring(i*2,(i*2)+2), 16);
-                a[aIndex] = (byte) c; // Intentionally doing a narrowing conversion. The two hex entries are all that matter.
+                a[aIndex] = (byte) c; // Intentionally doing a narrowing conversion. The two hex forageEntries are all that matter.
                 // and whether 0xff is 255 or -1 doesn't matter.
                 aIndex++;
             }
@@ -327,7 +331,7 @@ class jaseBT {
         findSize = findCodes.size();
         subSize = subFindCodes.size();
 
-        // Look through the method for matches and replace ArrayList entries as matched.
+        // Look through the method for matches and replace ArrayList forageEntries as matched.
         ArrayList<HashMap<String, Integer>> byteCodeLines = byteCodeMakeArray(ci);
         for ( int x = 0; x < byteCodeLines.size(); x++) {
             byteCodeLinesSub.add(new HashMap<>(byteCodeLines.get(x)));
@@ -409,7 +413,7 @@ class jaseBT {
      * Disassemble byteCode of the method represented by the CodeIterator ci and order the dissection in a nested
      * collection of ArrayList by ArrayList.
      *
-     * Each Child ArrayList element is ByteCode entries ordered as:
+     * Each Child ArrayList element is ByteCode forageEntries ordered as:
      *          [ByteCodes index "stackIndex"(int as string), opCode "opCode"(hex as string),
      *          optionally opOperand1...8 "opOperand1...8"(hex as string)]
      *

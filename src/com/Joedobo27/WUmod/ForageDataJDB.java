@@ -21,7 +21,7 @@ public class ForageDataJDB {
     int difficultyAt100;
     ModifiedBy modifiedBy;
     int chanceModifier;
-    public static ArrayList<ForageDataJDB> entries = setEntries();
+    public static ArrayList<ForageDataJDB> forageEntries = setEntries();
 
     public ForageDataJDB(final String aDescriptor, final int aOrdinal, final byte aTileType, final GrassData.GrowthStage aGrassLength,
                          final short aCategory, final int aItemType, final byte aMaterial, final int aChanceAt1, final int aChanceAt100,

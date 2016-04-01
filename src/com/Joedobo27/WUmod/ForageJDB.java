@@ -90,7 +90,7 @@ public class ForageJDB
             checkType = Tiles.Tile.TILE_BUSH.id;
         }
         float totalChance = 0.0f;
-        for (ForageDataJDB fd : ForageDataJDB.entries) {
+        for (ForageDataJDB fd : ForageDataJDB.forageEntries) {
             if (fd.tileType == checkType && fd.grassLength == aGrassLength) {
                 ForageJDB f = new ForageJDB(fd);
                 float chance = f.getChanceAt(performer, knowledge, tileX, tileY);
@@ -104,7 +104,7 @@ public class ForageJDB
         }
         int rndChance = Server.rand.nextInt((int)totalChance);
         float runningChance = 0.0f;
-        for (ForageDataJDB fd : ForageDataJDB.entries) {
+        for (ForageDataJDB fd : ForageDataJDB.forageEntries) {
             if (fd.tileType == checkType && (checkType != Tiles.Tile.TILE_GRASS.id || fd.grassLength == aGrassLength)) {
                 ForageJDB f = new ForageJDB(fd);
                 float chance2 = f.getChanceAt(performer, knowledge, tileX, tileY);
