@@ -14,7 +14,6 @@ import org.gotti.wurmunlimited.modsupport.IdFactory;
 import org.gotti.wurmunlimited.modsupport.IdType;
 import org.gotti.wurmunlimited.modsupport.ItemTemplateBuilder;
 
-
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -88,7 +87,6 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
     private CodeAttribute checkSaneAmountsAttribute;
     private CodeIterator checkSaneAmountsIterator;
     //</editor-fold>
-
 
     @Override
     public void configure(Properties properties) {
@@ -167,7 +165,7 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
             }
         }
         if (redDyeFromMadder) {
-            // for now, using lovage's graphic and MADDER's details.
+            // for now, using lovage graphic and MADDER's details.
             ItemTemplateBuilder madder = new ItemTemplateBuilder("jdbMadder");
             setMadderID(IdFactory.getIdFor("jdbMadder", IdType.ITEMTEMPLATE));
             madder.name("Madder", "Madders", "A plant with vibrant red roots.");
@@ -505,8 +503,8 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
     public void init() {
         String replaceByteResult;
         String printByteResult;
-        jaseBT jbt;
-        jaseBT jbt1;
+        JDBByteCode jbt;
+        JDBByteCode jbt1;
 
         pool = HookManager.getInstance().getClassPool();
         setJSSelf();
@@ -521,6 +519,7 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
             // Convert WU's Forage.class and Herb.class from Enum to ArrayList.
             jsForageOverwrite();
             jsHerbOverwrite();
+
             if (redDyeFromMadder) {
                 setGetCompositeColor(cfWurmColor, "(IIIF)I", "getCompositeColor");
                 try {
@@ -528,7 +527,7 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
                 } catch (BadBytecode badBytecode) {
                     badBytecode.printStackTrace();
                 }
-                jbt = new jaseBT();
+                jbt = new JDBByteCode();
                 //<editor-fold desc="Change information.">
                 // insert 7 wide gap at line 9.
                 // this--if (itemTemplateId == 439) {
@@ -539,7 +538,7 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
                 jbt.setOperandStructure(new ArrayList<>(Arrays.asList("000a", "",
                         String.format("%04X", cpWurmColor.addIntegerInfo(getMadderID())))));
                 jbt.setOpcodeOperand();
-                replaceByteResult = jaseBT.byteCodeFindReplace("00,00,00,00,00,00,00", "00,00,00,00,00,00,00", jbt.getOpcodeOperand(), getGetCompositeColorIterator(),
+                replaceByteResult = JDBByteCode.byteCodeFindReplace("00,00,00,00,00,00,00", "00,00,00,00,00,00,00", jbt.getOpcodeOperand(), getGetCompositeColorIterator(),
                         "getCompositeColor");
                 try {
                     getGetCompositeColorMInfo().rebuildStackMapIf6(pool, cfWurmColor);
@@ -547,7 +546,7 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
                     badBytecode.printStackTrace();
                 }
                 logger.log(Level.INFO, replaceByteResult);
-                jaseBT.byteCodePrint(getGetCompositeColorIterator(), "getCompositeColor",
+                JDBByteCode.byteCodePrint(getGetCompositeColorIterator(), "getCompositeColor",
                         "C:\\Program Files (x86)\\Steam\\SteamApps\\common\\Wurm Unlimited Dedicated Server\\byte code prints");
             }
         }
@@ -635,107 +634,113 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
     }
 
     private void jsForageOverwrite(){
-        try {
-            ctcForageData = pool.getAndRename("com.Joedobo27.WUmod.ForageDataJDB", "com.wurmonline.server.behaviours.ForageData");
-            ClassMap cmForageData = new ClassMap();
-            cmForageData.put("com.Joedobo27.WUmod.ForageDataJDB", "com.wurmonline.server.behaviours.ForageData");
-            ctcForageData.replaceClassName(cmForageData);
-            ctcForageData.rebuildClassFile();
+        if (!aaaJoeCommon.overwroteForage) {
+            try {
+                ctcForageData = pool.getAndRename("com.Joedobo27.WUmod.ForageDataJDB", "com.wurmonline.server.behaviours.ForageData");
+                ClassMap cmForageData = new ClassMap();
+                cmForageData.put("com.Joedobo27.WUmod.ForageDataJDB", "com.wurmonline.server.behaviours.ForageData");
+                ctcForageData.replaceClassName(cmForageData);
+                ctcForageData.rebuildClassFile();
 
-            ClassMap cmForage = new ClassMap();
-            cmForage.put("com.Joedobo27.WUmod.ForageJDB", "com.wurmonline.server.behaviours.Forage");
-            CtClass ctcForageNew = pool.getAndRename("com.Joedobo27.WUmod.ForageJDB", "com.wurmonline.server.behaviours.Forage");
-            ctcForageNew.replaceClassName(cmForage);
-            ctcForageNew.replaceClassName(cmForageData);
-            ctcForageNew.rebuildClassFile();
+                ClassMap cmForage = new ClassMap();
+                cmForage.put("com.Joedobo27.WUmod.ForageJDB", "com.wurmonline.server.behaviours.Forage");
+                CtClass ctcForageNew = pool.getAndRename("com.Joedobo27.WUmod.ForageJDB", "com.wurmonline.server.behaviours.Forage");
+                ctcForageNew.replaceClassName(cmForage);
+                ctcForageNew.replaceClassName(cmForageData);
+                ctcForageNew.rebuildClassFile();
 
-            ctcForageData.writeFile();
-            ctcForageNew.writeFile();
-            forageDataClazz = ctcForageData.toClass();
-            jaseBT.overwroteForage = true;
-        } catch (NotFoundException | CannotCompileException | IOException e) {
-            e.printStackTrace();
+                ctcForageData.writeFile();
+                ctcForageNew.writeFile();
+                forageDataClazz = ctcForageData.toClass();
+                aaaJoeCommon.overwroteForage = true;
+            } catch (NotFoundException | CannotCompileException | IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 
     private void jsHerbOverwrite() {
-        try {
-            ctcHerbData = pool.getAndRename("com.Joedobo27.WUmod.HerbDataJDB", "com.wurmonline.server.behaviours.HerbData");
-            ClassMap cmHerbData = new ClassMap();
-            cmHerbData.put("com.Joedobo27.WUmod.HerbDataJDB", "com.wurmonline.server.behaviours.HerbData");
-            ctcHerbData.replaceClassName(cmHerbData);
-            ctcHerbData.rebuildClassFile();
+        if (!aaaJoeCommon.overwroteHerb) {
+            try {
+                ctcHerbData = pool.getAndRename("com.Joedobo27.WUmod.HerbDataJDB", "com.wurmonline.server.behaviours.HerbData");
+                ClassMap cmHerbData = new ClassMap();
+                cmHerbData.put("com.Joedobo27.WUmod.HerbDataJDB", "com.wurmonline.server.behaviours.HerbData");
+                ctcHerbData.replaceClassName(cmHerbData);
+                ctcHerbData.rebuildClassFile();
 
-            ClassMap cmHerb = new ClassMap();
-            cmHerb.put("com.Joedobo27.WUmod.HerbJDB", "com.wurmonline.server.behaviours.Herb");
-            CtClass ctcHerbNew = pool.getAndRename("com.Joedobo27.WUmod.HerbJDB", "com.wurmonline.server.behaviours.Herb");
-            ctcHerbNew.replaceClassName(cmHerb);
-            ctcHerbNew.replaceClassName(cmHerbData);
-            ctcHerbNew.rebuildClassFile();
+                ClassMap cmHerb = new ClassMap();
+                cmHerb.put("com.Joedobo27.WUmod.HerbJDB", "com.wurmonline.server.behaviours.Herb");
+                CtClass ctcHerbNew = pool.getAndRename("com.Joedobo27.WUmod.HerbJDB", "com.wurmonline.server.behaviours.Herb");
+                ctcHerbNew.replaceClassName(cmHerb);
+                ctcHerbNew.replaceClassName(cmHerbData);
+                ctcHerbNew.rebuildClassFile();
 
-            ctcHerbData.writeFile();
-            ctcHerbNew.writeFile();
-            herbDataClazz = ctcHerbData.toClass();
-            jaseBT.overwroteHerb = true;
-        } catch (NotFoundException | CannotCompileException | IOException e) {
-        e.printStackTrace();
-    }
-    }
-
-    private void jsCheckSaneAmountsExclusions(){
-        //<editor-fold desc="Change information.">
-                /*
-                Change checkSaneAmounts of CreationEntry to exclude certain items from a section that was bugging creation because of
-                1) combine for all 2)large weight difference between finished item and one or both materials.
-                Lines 387 - 401
-                - was: if (template.isCombine() && this.objectCreated != 73)
-                - becomes: if (template.isCombine() && !largeMaterialRatioDifferentials.contains(this.objectCreated)) {
-                  add a public static field of ArrayList to represent largeMaterialRatioDifferentials. Initialize the field with just
-                  ItemList.lye and use reflection to add other items relevant to the mod.
-                */
-        //</editor-fold>
-        jaseBT jbt;
-        jaseBT jbt1;
-        String replaceResult;
-        setCheckSaneAmounts(cfCreationEntry,
-                "(Lcom/wurmonline/server/items/Item;ILcom/wurmonline/server/items/Item;ILcom/wurmonline/server/items/ItemTemplate;Lcom/wurmonline/server/creatures/Creature;Z)V",
-                "checkSaneAmounts");
-        try {
-            getCheckSaneAmountsIterator().insertGap(395, 10);
-        } catch (BadBytecode badBytecode) {
-            badBytecode.printStackTrace();
+                ctcHerbData.writeFile();
+                ctcHerbNew.writeFile();
+                herbDataClazz = ctcHerbData.toClass();
+                aaaJoeCommon.overwroteHerb = true;
+            } catch (NotFoundException | CannotCompileException | IOException e) {
+                e.printStackTrace();
+            }
         }
-        jbt = new jaseBT();
+    }
 
-        jbt.setOpCodeStructure(new ArrayList<>(Arrays.asList(Opcode.ALOAD, Opcode.INVOKEVIRTUAL, Opcode.IFEQ, Opcode.NOP, Opcode.NOP,
-                Opcode.NOP, Opcode.NOP, Opcode.NOP, Opcode.NOP, Opcode.NOP, Opcode.NOP, Opcode.NOP, Opcode.NOP, Opcode.ALOAD_0,
-                Opcode.GETFIELD, Opcode.BIPUSH, Opcode.IF_ICMPEQ)));
-        jbt.setOperandStructure(new ArrayList<>(Arrays.asList("05",
-                jaseBT.findConstantPoolReference(cpCreationEntry, ConstPool.CONST_Methodref, "com/wurmonline/server/items/ItemTemplate.isCombine:()Z"),
-                "0038", "", "", "", "", "", "", "", "", "", "", "",
-                jaseBT.findConstantPoolReference(cpCreationEntry, ConstPool.CONST_Fieldref, "objectCreated:I"),
-                "49", "0025")));
-        jbt.setOpcodeOperand();
-        jbt1 = new jaseBT();
-        jbt1.setOpCodeStructure(new ArrayList<>(Arrays.asList(Opcode.ALOAD, Opcode.INVOKEVIRTUAL, Opcode.IFEQ, Opcode.ALOAD_0,
-                Opcode.GETFIELD, Opcode.LDC_W, Opcode.IF_ICMPEQ, Opcode.ALOAD_0, Opcode.GETFIELD, Opcode.BIPUSH, Opcode.IF_ICMPEQ)));
-        jbt1.setOperandStructure(new ArrayList<>(Arrays.asList("05",
-                jaseBT.findConstantPoolReference(cpCreationEntry, ConstPool.CONST_Methodref, "com/wurmonline/server/items/ItemTemplate.isCombine:()Z"),
-                "0038", "",
-                jaseBT.findConstantPoolReference(cpCreationEntry, ConstPool.CONST_Fieldref, "objectCreated:I"),
-                String.format("%04X", cpCreationEntry.addIntegerInfo(782) & 0xffff), "002e", "",
-                jaseBT.findConstantPoolReference(cpCreationEntry, ConstPool.CONST_Fieldref, "objectCreated:I"),
-                "49", "0025")));
-        jbt1.setOpcodeOperand();
-        replaceResult = jaseBT.byteCodeFindReplace(jbt.getOpcodeOperand(), jbt.getOpcodeOperand(), jbt1.getOpcodeOperand(), getCheckSaneAmountsIterator(),
-                "checkSaneAmounts");
-        //getCheckSaneAmountsAttribute().computeMaxStack();
-        try {
-            getCheckSaneAmountsMInfo().rebuildStackMapIf6(pool, cfCreationEntry);
-        } catch (BadBytecode badBytecode) {
-            badBytecode.printStackTrace();
+    private void jsCheckSaneAmountsExclusions() {
+        if (!aaaJoeCommon.modifiedCheckSaneAmounts) {
+            //<editor-fold desc="Change information.">
+        /*
+        Change checkSaneAmounts of CreationEntry to exclude certain items from a section that was bugging creation because of
+        1) combine for all 2)large weight difference between finished item and one or both materials.
+        Lines 387 - 401
+        - was: if (template.isCombine() && this.objectCreated != 73)
+        - becomes: if (template.isCombine() && !largeMaterialRatioDifferentials.contains(this.objectCreated)) {
+          add a public static field of ArrayList to represent largeMaterialRatioDifferentials. Initialize the field with just
+          ItemList.lye and use reflection to add other items relevant to the mod.
+        */
+            //</editor-fold>
+            JDBByteCode jbt;
+            JDBByteCode jbt1;
+            String replaceResult;
+            setCheckSaneAmounts(cfCreationEntry,
+                    "(Lcom/wurmonline/server/items/Item;ILcom/wurmonline/server/items/Item;ILcom/wurmonline/server/items/ItemTemplate;Lcom/wurmonline/server/creatures/Creature;Z)V",
+                    "checkSaneAmounts");
+            try {
+                getCheckSaneAmountsIterator().insertGap(395, 10);
+            } catch (BadBytecode badBytecode) {
+                badBytecode.printStackTrace();
+            }
+            jbt = new JDBByteCode();
+
+            jbt.setOpCodeStructure(new ArrayList<>(Arrays.asList(Opcode.ALOAD, Opcode.INVOKEVIRTUAL, Opcode.IFEQ, Opcode.NOP, Opcode.NOP,
+                    Opcode.NOP, Opcode.NOP, Opcode.NOP, Opcode.NOP, Opcode.NOP, Opcode.NOP, Opcode.NOP, Opcode.NOP, Opcode.ALOAD_0,
+                    Opcode.GETFIELD, Opcode.BIPUSH, Opcode.IF_ICMPEQ)));
+            jbt.setOperandStructure(new ArrayList<>(Arrays.asList("05",
+                    JDBByteCode.findConstantPoolReference(cpCreationEntry, ConstPool.CONST_Methodref, "com/wurmonline/server/items/ItemTemplate.isCombine:()Z"),
+                    "0038", "", "", "", "", "", "", "", "", "", "", "",
+                    JDBByteCode.findConstantPoolReference(cpCreationEntry, ConstPool.CONST_Fieldref, "objectCreated:I"),
+                    "49", "0025")));
+            jbt.setOpcodeOperand();
+            jbt1 = new JDBByteCode();
+            jbt1.setOpCodeStructure(new ArrayList<>(Arrays.asList(Opcode.ALOAD, Opcode.INVOKEVIRTUAL, Opcode.IFEQ, Opcode.ALOAD_0,
+                    Opcode.GETFIELD, Opcode.LDC_W, Opcode.IF_ICMPEQ, Opcode.ALOAD_0, Opcode.GETFIELD, Opcode.BIPUSH, Opcode.IF_ICMPEQ)));
+            jbt1.setOperandStructure(new ArrayList<>(Arrays.asList("05",
+                    JDBByteCode.findConstantPoolReference(cpCreationEntry, ConstPool.CONST_Methodref, "com/wurmonline/server/items/ItemTemplate.isCombine:()Z"),
+                    "0038", "",
+                    JDBByteCode.findConstantPoolReference(cpCreationEntry, ConstPool.CONST_Fieldref, "objectCreated:I"),
+                    String.format("%04X", cpCreationEntry.addIntegerInfo(782) & 0xffff), "002e", "",
+                    JDBByteCode.findConstantPoolReference(cpCreationEntry, ConstPool.CONST_Fieldref, "objectCreated:I"),
+                    "49", "0025")));
+            jbt1.setOpcodeOperand();
+            replaceResult = JDBByteCode.byteCodeFindReplace(jbt.getOpcodeOperand(), jbt.getOpcodeOperand(), jbt1.getOpcodeOperand(), getCheckSaneAmountsIterator(),
+                    "checkSaneAmounts");
+            //getCheckSaneAmountsAttribute().computeMaxStack();
+            try {
+                getCheckSaneAmountsMInfo().rebuildStackMapIf6(pool, cfCreationEntry);
+            } catch (BadBytecode badBytecode) {
+                badBytecode.printStackTrace();
+            }
+            logger.log(Level.INFO, replaceResult);
         }
-        logger.log(Level.INFO, replaceResult);
     }
     //</editor-fold>
 
