@@ -14,9 +14,11 @@ import org.gotti.wurmunlimited.modsupport.IdFactory;
 import org.gotti.wurmunlimited.modsupport.IdType;
 import org.gotti.wurmunlimited.modsupport.ItemTemplateBuilder;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -355,6 +357,12 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
                         madderID, ItemList.dyeRed, true, true, 0.0f, false, false, CreationCategories.DYES);
                 Field a[] = CreationEntry.class.getDeclaredFields();
                 logger.log(Level.INFO, Arrays.toString(a));
+                if (aaaJoeCommon.modifiedCheckSaneAmounts) {
+                    ArrayList<Integer> abc = ReflectionUtil.getPrivateField(CreationEntry.class, ReflectionUtil.getField(CreationEntry.class,
+                            "largeMaterialRatioDifferentials"));
+                    abc.add(ItemList.dyeRed);
+                    logger.log(Level.INFO, abc.toString());
+                }
                 /*
                 ArrayList<Integer> largeMaterialRatioDifferentials = ReflectionUtil.getPrivateField(CreationEntry.class,
                         ReflectionUtil.getField(CreationEntry.class, "largeMaterialRatioDifferentials"));
@@ -368,19 +376,8 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
                         ItemList.scythe, ItemList.scytheBlade));
                 ArrayList<Integer> targets = new ArrayList<>(Arrays.asList(ItemList.knifeBladeButchering, ItemList.knifeBladeCarving, ItemList.scytheBlade,
                         ItemList.sickleBlade, ItemList.ironBar, ItemList.steelBar, ItemList.adamantineBar, ItemList.glimmerSteelBar, ItemList.seryllBar));
-
-                Map<Integer, List<CreationEntry>> simpleEntries = new HashMap<>();
-                try {
-                    simpleEntries = ReflectionUtil.getPrivateField(CreationMatrix.class, ReflectionUtil.getField(CreationMatrix.class, "simpleEntries"));
-                } catch (IllegalAccessException | NoSuchFieldException e) {
-                    e.printStackTrace();
-                }
-                Map<Integer, List<CreationEntry>> matrix = new HashMap<>();
-                try {
-                    matrix = ReflectionUtil.getPrivateField(CreationMatrix.class, ReflectionUtil.getField(CreationMatrix.class, "matrix"));
-                } catch (IllegalAccessException | NoSuchFieldException e) {
-                    e.printStackTrace();
-                }
+                Map<Integer, List<CreationEntry>> simpleEntries = ReflectionUtil.getPrivateField(CreationMatrix.class, ReflectionUtil.getField(CreationMatrix.class, "simpleEntries"));
+                Map<Integer, List<CreationEntry>> matrix = ReflectionUtil.getPrivateField(CreationMatrix.class, ReflectionUtil.getField(CreationMatrix.class, "matrix"));
 
                 //remove all simpleEntries matching the created items.
                 HashMap<Integer, List<CreationEntry>> toDeleteSimple = new HashMap<>();
@@ -487,7 +484,7 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
 
                 logger.log(Level.INFO, "Tools crafted with WS switch over to BS");
             }
-        } catch (Exception e) {
+        } catch (IllegalAccessException | NoSuchFieldException | NoSuchMethodException | InstantiationException | InvocationTargetException e) {
             e.printStackTrace();
         }
     }
@@ -513,8 +510,9 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
                 if (!aaaJoeCommon.overwroteHerb)
                     aaaJoeCommon.jsHerbOverwrite();
                 // change CheckSaneAmounts of CreationEntry so red dye making with madder dosen't give "not enough material" messages.
-                if (!aaaJoeCommon.modifiedCheckSaneAmounts)
-                    ;//aaaJoeCommon.jsCheckSaneAmountsExclusions();
+                if (!aaaJoeCommon.modifiedCheckSaneAmounts) {
+                    aaaJoeCommon.jsCheckSaneAmountsExclusions();
+                }
             }
             if (craftGourdCanteen || craftGourdWax) {
                 if (!aaaJoeCommon.overwroteForage)
@@ -532,34 +530,34 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
             }
             */
             }
-        } catch (Exception e) {
+        } catch (NotFoundException | CannotCompileException | FileNotFoundException | BadBytecode e) {
             e.printStackTrace();
         }
     }
 
     //<editor-fold desc="Javassist and bytecode altering section.">
-    private void setJSSelf() throws Exception {
+    private void setJSSelf() throws NotFoundException {
         ctcSelf = pool.get(this.getClass().getName());
     }
 
-    private void setJSWurmColor() throws Exception {
+    private void setJSWurmColor() throws NotFoundException {
         ctcWurmColor = pool.get("com.wurmonline.server.items.WurmColor");
         cfWurmColor = ctcWurmColor.getClassFile();
         cpWurmColor = cfWurmColor.getConstPool();
     }
 
-    private void setJSServer() throws Exception {
+    private void setJSServer() throws NotFoundException {
         ctcServer = pool.get("com.wurmonline.server.Server");
     }
 
-    private void jsAlwaysForage() throws Exception {
+    private void jsAlwaysForage() throws NotFoundException, CannotCompileException {
         CtMethod ctmIsForagable = ctcServer.getMethod("isForagable", "(II)Z");
         ctmIsForagable.setBody("{ return true; }");
         CtMethod ctmIsBotanizable = ctcServer.getMethod("isBotanizable", "(II)Z");
         ctmIsBotanizable.setBody("{ return true; }");
     }
 
-    private static void jsAlterGetCompositeColor() throws Exception {
+    private static void jsAlterGetCompositeColor() throws BadBytecode, NotFoundException, FileNotFoundException {
         JDBByteCode jbt;
         String replaceByteResult;
         setGetCompositeColor(cfWurmColor, "(IIIF)I", "getCompositeColor");
@@ -607,7 +605,7 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
 
     //<editor-fold desc="Reflection methods section.">
     @SuppressWarnings("unchecked")
-    private static void addWaxGourdForageReflection() throws Exception {
+    private static void addWaxGourdForageReflection() throws NoSuchMethodException, NoSuchFieldException, IllegalAccessException, InstantiationException, InvocationTargetException {
 
         ArrayList forageEntries = ReflectionUtil.getPrivateField(aaaJoeCommon.forageDataClazz, ReflectionUtil.getField(aaaJoeCommon.forageDataClazz, "forageEntries"));
         Constructor forageDataIni = aaaJoeCommon.forageDataClazz.getConstructor(String.class, Integer.TYPE, Byte.TYPE, GrassData.GrowthStage.class,
@@ -630,7 +628,7 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
     }
 
     @SuppressWarnings("unchecked")
-    private static void addMadderHerbReflection() throws Exception {
+    private static void addMadderHerbReflection() throws NoSuchMethodException, NoSuchFieldException, IllegalAccessException, InstantiationException, InvocationTargetException {
         ArrayList herbEntries = ReflectionUtil.getPrivateField(aaaJoeCommon.herbDataClazz, ReflectionUtil.getField(aaaJoeCommon.herbDataClazz, "herbEntries"));
         Constructor herbDataIni = aaaJoeCommon.herbDataClazz.getConstructor(String.class, Integer.TYPE, Byte.TYPE, GrassData.GrowthStage.class,
                 Short.TYPE, Integer.TYPE, Byte.TYPE, Integer.TYPE, Integer.TYPE, Integer.TYPE, Integer.TYPE, ModifiedBy.class,
