@@ -17,13 +17,12 @@ import org.gotti.wurmunlimited.modsupport.ItemTemplateBuilder;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-@SuppressWarnings({"unused", "FieldCanBeLocal"})
+@SuppressWarnings({"unused", "FieldCanBeLocal", "Convert2streamapi"})
 public class WurminianPacifistMod implements WurmMod, Initable, Configurable, ServerStartedListener, ItemTemplatesCreatedListener {
 
     private static Logger logger = Logger.getLogger(WurminianPacifistMod.class.getName());
@@ -345,30 +344,28 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
                 CreationEntry cottonToolBelt = CreationEntryCreator.createSimpleEntry(SkillList.CLOTHTAILORING, ItemList.metalHooks, ItemList.clothYard,
                         cottonToolbeltID, true, true, 0.0f, false, false, CreationCategories.CLOTHES);
                 cottonToolBelt.setDepleteFromTarget(1500);
+                logger.log(Level.INFO, "Cotton Toolbelt added and a way to craft it");
             }
             if (craftGourdCanteen) {
                 addWaxGourdForageReflection();
                 CreationEntry gourdCanteen = CreationEntryCreator.createSimpleEntry(SkillList.BUTCHERING, ItemList.knifeCarving, waxGourdID,
                         gourdCanteenID, false, true, 0.0f, false, false, CreationCategories.CONTAINER);
+                logger.log(Level.INFO, "Gourd canteen added and a way to craft it");
             }
             if (redDyeFromMadder) {
                 addMadderHerbReflection();
                 CreationEntry redMadder = CreationEntryCreator.createSimpleEntry(SkillList.ALCHEMY_NATURAL, ItemList.water,
                         madderID, ItemList.dyeRed, true, true, 0.0f, false, false, CreationCategories.DYES);
-                Field a[] = CreationEntry.class.getDeclaredFields();
-                logger.log(Level.INFO, Arrays.toString(a));
                 if (aaaJoeCommon.modifiedCheckSaneAmounts) {
                     ArrayList<Integer> abc = ReflectionUtil.getPrivateField(CreationEntry.class, ReflectionUtil.getField(CreationEntry.class,
                             "largeMaterialRatioDifferentials"));
-                    abc.add(ItemList.dyeRed);
-                    logger.log(Level.INFO, abc.toString());
+                    ArrayList<Integer> b = new ArrayList<>(Arrays.asList(madderID, ItemList.dyeRed, ItemList.dye));
+                    for (int a : b) {
+                        if (!abc.contains(a))
+                            abc.add(a);
+                    }
                 }
-                /*
-                ArrayList<Integer> largeMaterialRatioDifferentials = ReflectionUtil.getPrivateField(CreationEntry.class,
-                        ReflectionUtil.getField(CreationEntry.class, "largeMaterialRatioDifferentials"));
-                if (!largeMaterialRatioDifferentials.contains(ItemList.dyeRed))
-                    largeMaterialRatioDifferentials.add(ItemList.dyeRed);
-                */
+                logger.log(Level.INFO, "Madder plant as red dye material added");
             }
             if (toolInWSToBS) {
                 ArrayList<Integer> created = new ArrayList<>(Arrays.asList(ItemList.knifeButchering, ItemList.knifeBladeButchering,
@@ -401,7 +398,6 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
                             entries = new ArrayList<>();
                             toDeleteMatrix.put(matrix1.getKey(), entries);
                         }
-                        //noinspection Convert2streamapi
                         for (CreationEntry entry : matrix1.getValue()) {
                             if (created.contains(entry.getObjectCreated())) {
                                 toDeleteMatrix.get(matrix1.getKey()).add(entry);
@@ -509,7 +505,7 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
                 jsAlterGetCompositeColor();
                 if (!aaaJoeCommon.overwroteHerb)
                     aaaJoeCommon.jsHerbOverwrite();
-                // change CheckSaneAmounts of CreationEntry so red dye making with madder dosen't give "not enough material" messages.
+                // change CheckSaneAmounts of CreationEntry so red dye making with madder doesn't give "not enough material" messages.
                 if (!aaaJoeCommon.modifiedCheckSaneAmounts) {
                     aaaJoeCommon.jsCheckSaneAmountsExclusions();
                 }
@@ -611,8 +607,6 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
         Constructor forageDataIni = aaaJoeCommon.forageDataClazz.getConstructor(String.class, Integer.TYPE, Byte.TYPE, GrassData.GrowthStage.class,
                 Short.TYPE, Integer.TYPE, Byte.TYPE, Integer.TYPE, Integer.TYPE, Integer.TYPE, Integer.TYPE, ModifiedBy.class,
                 Integer.TYPE);
-        logger.log(Level.INFO, "Clazz " + aaaJoeCommon.forageDataClazz.getName());
-        logger.log(Level.INFO, "Const " + forageDataIni.toString());
         forageEntries.add(forageDataIni.newInstance("GSHORT_WAX_GOURD", 1000, Tiles.Tile.TILE_GRASS.id, GrassData.GrowthStage.SHORT, (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
         forageEntries.add(forageDataIni.newInstance("GMED_WAX_GOURD", 1001, Tiles.Tile.TILE_GRASS.id, GrassData.GrowthStage.MEDIUM, (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
         forageEntries.add(forageDataIni.newInstance("GTALL_WAX_GOURD", 1002, Tiles.Tile.TILE_GRASS.id, GrassData.GrowthStage.TALL, (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
