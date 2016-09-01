@@ -1,5 +1,7 @@
-package com.Joedobo27.WUmod;
+package com.Joedobo27.wurminianpacifist;
 
+import com.Joedobo27.common.Common;
+import com.Joedobo27.common.ForageHerbData;
 import com.wurmonline.mesh.GrassData;
 import com.wurmonline.mesh.Tiles;
 import com.wurmonline.server.behaviours.ModifiedBy;
@@ -7,6 +9,8 @@ import com.wurmonline.server.items.*;
 import com.wurmonline.server.skills.SkillList;
 import javassist.*;
 import javassist.bytecode.*;
+import javassist.expr.ExprEditor;
+import javassist.expr.MethodCall;
 import org.gotti.wurmunlimited.modloader.ReflectionUtil;
 import org.gotti.wurmunlimited.modloader.classhooks.HookManager;
 import org.gotti.wurmunlimited.modloader.interfaces.*;
@@ -14,14 +18,16 @@ import org.gotti.wurmunlimited.modsupport.IdFactory;
 import org.gotti.wurmunlimited.modsupport.IdType;
 import org.gotti.wurmunlimited.modsupport.ItemTemplateBuilder;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.IntStream;
+
+import static com.Joedobo27.wurminianpacifist.BytecodeTools.addConstantPoolReference;
+import static com.Joedobo27.wurminianpacifist.BytecodeTools.findConstantPoolReference;
+import static com.Joedobo27.wurminianpacifist.BytecodeTools.findReplaceCodeIterator;
 
 @SuppressWarnings({"unused", "FieldCanBeLocal"})
 public class WurminianPacifistMod implements WurmMod, Initable, Configurable, ServerStartedListener, ItemTemplatesCreatedListener {
@@ -40,14 +46,12 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
     private int squareGramsInTowel = 1200;
     private int stringGramsInTowel = 800;
     private boolean craftCottonBed = false;
-    private boolean redDyeFromMadder = false;
+    private static boolean redDyeFromMadder = false;
     private boolean cheeseDrillWithCloth = false;
     private boolean craftGourdCanteen = false;
     private boolean craftGourdWax = false;
     private boolean craftCottonToolBelt = false;
-    //</editor-fold>
 
-    //<editor-fold desc="IDs for new items.">
     private static int towelItemID;
     private static int cottonBedID;
     private static int madderID;
@@ -57,19 +61,8 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
     private static int gourdCanteenID;
     private static int waxID;
     private static int cottonToolbeltID;
-    //</editor-fold>
 
-    //<editor-fold desc="Javassist objects">
     private static ClassPool pool;
-    private static CtClass ctcSelf;
-    private static CtClass ctcWurmColor;
-    private static ClassFile cfWurmColor;
-    private static ConstPool cpWurmColor;
-    private static CtClass ctcServer;
-    private static CodeAttribute getCompositeColorAttribute;
-    private static CodeIterator getCompositeColorIterator;
-    private static MethodInfo getCompositeColorMInfo;
-    //</editor-fold>
 
     @Override
     public void configure(Properties properties) {
@@ -347,22 +340,16 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
                 cottonToolBelt.setDepleteFromTarget(1500);
             }
             if (craftGourdCanteen) {
-                addWaxGourdForageReflection();
+                //addWaxGourdForageReflection();
                 CreationEntry gourdCanteen = CreationEntryCreator.createSimpleEntry(SkillList.BUTCHERING, ItemList.knifeCarving, waxGourdID,
                         gourdCanteenID, false, true, 0.0f, false, false, CreationCategories.CONTAINER);
             }
             if (redDyeFromMadder) {
-                addMadderHerbReflection();
+                //addMadderHerbReflection();
                 CreationEntry redMadder = CreationEntryCreator.createSimpleEntry(SkillList.ALCHEMY_NATURAL, ItemList.water,
                         madderID, ItemList.dyeRed, true, true, 0.0f, false, false, CreationCategories.DYES);
-                Field a[] = CreationEntry.class.getDeclaredFields();
-                logger.log(Level.INFO, Arrays.toString(a));
-                if (aaaJoeCommon.modifiedCheckSaneAmounts) {
-                    ArrayList<Integer> abc = ReflectionUtil.getPrivateField(CreationEntry.class, ReflectionUtil.getField(CreationEntry.class,
-                            "largeMaterialRatioDifferentials"));
-                    abc.add(ItemList.dyeRed);
-                    logger.log(Level.INFO, abc.toString());
-                }
+                int[] exceptions = {madderID, ItemList.dyeRed, ItemList.dye, ItemList.lye};
+                Common.addExceptions(exceptions);
                 /*
                 ArrayList<Integer> largeMaterialRatioDifferentials = ReflectionUtil.getPrivateField(CreationEntry.class,
                         ReflectionUtil.getField(CreationEntry.class, "largeMaterialRatioDifferentials"));
@@ -484,127 +471,126 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
 
                 logger.log(Level.INFO, "Tools crafted with WS switch over to BS");
             }
-        } catch (IllegalAccessException | NoSuchFieldException | NoSuchMethodException | InstantiationException | InvocationTargetException e) {
-            e.printStackTrace();
+        } catch (IllegalAccessException | NoSuchFieldException e) {
+            logger.log(Level.WARNING,e.getMessage(), e);
         }
     }
 
     @Override
     public void init() {
         try {
+            pool = HookManager.getInstance().getClassPool();
+            redDyeFromMadderBytecode();
+
             String replaceByteResult;
             String printByteResult;
-            JDBByteCode jbt;
-            JDBByteCode jbt1;
-
-            pool = HookManager.getInstance().getClassPool();
-            setJSSelf();
 
             // Testing tool to make it so a tile can always be foraged or botanized.
-            setJSServer();
             jsAlwaysForage();
-
-            if (redDyeFromMadder) {
-                setJSWurmColor();
-                jsAlterGetCompositeColor();
-                if (!aaaJoeCommon.overwroteHerb)
-                    aaaJoeCommon.jsHerbOverwrite();
-                // change CheckSaneAmounts of CreationEntry so red dye making with madder dosen't give "not enough material" messages.
-                if (!aaaJoeCommon.modifiedCheckSaneAmounts) {
-                    aaaJoeCommon.jsCheckSaneAmountsExclusions();
-                }
-            }
-            if (craftGourdCanteen || craftGourdWax) {
-                if (!aaaJoeCommon.overwroteForage)
-                    aaaJoeCommon.jsForageOverwrite();
-
-            }
             if (cheeseDrillWithCloth) {
-            /*
-            Need to insert into SimpleCreationEntry#Run() and inside the "if (counter == 1.0f) {" section near the other heat checks.
-            water (source) must be hot
-            if (realSource.getTemplateId() == ItemList.water && realTarget.getTemplateId() == getNettleTeaID() &&
-            realSource.getTemperature() < 2000){
-                performer.getCommunicator().sendNormalServerMessage("The " + realSource.getName() + " must be hot to do this.");
-                throw new NoSuchItemException("Too low temperature.");
             }
-            */
-            }
-        } catch (NotFoundException | CannotCompileException | FileNotFoundException | BadBytecode e) {
+        } catch (NotFoundException | CannotCompileException | BadBytecode | ClassNotFoundException e) {
             e.printStackTrace();
         }
     }
 
-    //<editor-fold desc="Javassist and bytecode altering section.">
-    private void setJSSelf() throws NotFoundException {
-        ctcSelf = pool.get(this.getClass().getName());
-    }
-
-    private void setJSWurmColor() throws NotFoundException {
-        ctcWurmColor = pool.get("com.wurmonline.server.items.WurmColor");
-        cfWurmColor = ctcWurmColor.getClassFile();
-        cpWurmColor = cfWurmColor.getConstPool();
-    }
-
-    private void setJSServer() throws NotFoundException {
-        ctcServer = pool.get("com.wurmonline.server.Server");
-    }
 
     private void jsAlwaysForage() throws NotFoundException, CannotCompileException {
+
         CtMethod ctmIsForagable = ctcServer.getMethod("isForagable", "(II)Z");
         ctmIsForagable.setBody("{ return true; }");
         CtMethod ctmIsBotanizable = ctcServer.getMethod("isBotanizable", "(II)Z");
         ctmIsBotanizable.setBody("{ return true; }");
     }
 
-    private static void jsAlterGetCompositeColor() throws BadBytecode, NotFoundException, FileNotFoundException {
-        JDBByteCode jbt;
-        String replaceByteResult;
-        setGetCompositeColor(cfWurmColor, "(IIIF)I", "getCompositeColor");
-        getCompositeColorIterator.insertGap(9, 7);
+    private static void redDyeFromMadderBytecode() throws NotFoundException, BadBytecode, CannotCompileException, ClassNotFoundException {
+        if (!redDyeFromMadder)
+            return;
+        final int[] redDyeFromMadderSuccesses = new int[]{0};
+        // In CreationEntry.checkSaneAmounts()
+        // Byte code change: this.objectCreated != 73 to this.getObjectCreated() == 73
+        // Do this because it's not possible to instrument on a field and have the replace function use a returned value from a hook method.
+        JAssistClassData creationEntry = new JAssistClassData("com.wurmonline.server.items.CreationEntry", pool);
+        JAssistMethodData checkSaneAmounts = new JAssistMethodData(creationEntry,
+                "(Lcom/wurmonline/server/items/Item;ILcom/wurmonline/server/items/Item;ILcom/wurmonline/server/items/ItemTemplate;Lcom/wurmonline/server/creatures/Creature;Z)V",
+                "checkSaneAmounts");
 
-        jbt = new JDBByteCode();
-        //<editor-fold desc="Change information.">
+        boolean isModifiedCheckSaneAmounts = true;
+        byte[] findPoolResult;
+        try {
+            //noinspection UnusedAssignment
+            findPoolResult = findConstantPoolReference(creationEntry.getConstPool(),
+                    "// Method com/Joedobo27/common/Common.checkSaneAmountsExceptionsHook:(III)I");
+        } catch (UnsupportedOperationException e) {
+            isModifiedCheckSaneAmounts = false;
+        }
+        if (isModifiedCheckSaneAmounts)
+            Arrays.fill(redDyeFromMadderSuccesses, 1);
+        if (!isModifiedCheckSaneAmounts) {
+            Bytecode find = new Bytecode(creationEntry.getConstPool());
+            find.addOpcode(Opcode.ALOAD_0);
+            find.addOpcode(Opcode.GETFIELD);
+            findPoolResult = findConstantPoolReference(creationEntry.getConstPool(), "// Field objectCreated:I");
+            find.add(findPoolResult[0], findPoolResult[1]);
+            find.addOpcode(Opcode.BIPUSH);
+            find.add(73);
+            logger.log(Level.INFO, Arrays.toString(find.get()));
+
+            Bytecode replace = new Bytecode(creationEntry.getConstPool());
+            replace.addOpcode(Opcode.ALOAD_0);
+            replace.addOpcode(Opcode.INVOKEVIRTUAL);
+            findPoolResult = addConstantPoolReference(creationEntry.getConstPool(), "// Method getObjectCreated:()I");
+            replace.add(findPoolResult[0], findPoolResult[1]);
+            replace.addOpcode(Opcode.BIPUSH);
+            replace.add(73);
+            logger.log(Level.INFO, Arrays.toString(replace.get()));
+
+            boolean replaceResult = findReplaceCodeIterator(checkSaneAmounts.getCodeIterator(), find, replace);
+            redDyeFromMadderSuccesses[0] = replaceResult ? 1 : 0;
+            logger.log(Level.FINE, "checkSaneAmounts find and replace: " + Boolean.toString(replaceResult));
+
+            checkSaneAmounts.getCtMethod().instrument(new ExprEditor() {
+                @Override
+                public void edit(MethodCall methodCall) throws CannotCompileException {
+                    if (Objects.equals("getObjectCreated", methodCall.getMethodName())) {
+                        methodCall.replace("$_ = com.Joedobo27.common.Common.checkSaneAmountsExceptionsHook( $0.getObjectCreated(), sourceMax, targetMax);");
+                        logger.log(Level.FINE, "CreationEntry.class, checkSaneAmounts(), installed hook at line: " + methodCall.getLineNumber());
+                        redDyeFromMadderSuccesses[1] = 1;
+                    }
+                }
+            });
+        }
+
+        JAssistClassData wurmColor = new JAssistClassData("com.wurmonline.server.items.wurmColor", pool);
+        JAssistMethodData getCompositeColor = new JAssistMethodData(wurmColor, "(IIIF)I", "getCompositeColor");
+        //<editor-fold desc="Withing WurmColor change getCompositeColor()">
         // insert 7 wide gap at line 9.
         // this--if (itemTemplateId == 439) {
         // becomes-- if (itemTemplateId == 439 || itemTemplateID == ??) {
         // Where ?? is a value picked for Madder and inserted with with ConstantPool.addIntegerInfo()
         //</editor-fold>
-        jbt.setOpCodeStructure(new ArrayList<>(Arrays.asList(Opcode.IF_ICMPEQ, Opcode.ILOAD_2, Opcode.LDC_W)));
-        jbt.setOperandStructure(new ArrayList<>(Arrays.asList("000a", "",
-                String.format("%04X", cpWurmColor.addIntegerInfo(madderID)))));
-        jbt.setOpcodeOperand();
-        replaceByteResult = JDBByteCode.byteCodeFindReplace("00,00,00,00,00,00,00", "00,00,00,00,00,00,00", jbt.getOpcodeOperand(), getCompositeColorIterator,
-                "getCompositeColor");
+        getCompositeColor.getCodeIterator().insertGap(9, 7);
 
-        getCompositeColorMInfo.rebuildStackMapIf6(pool, cfWurmColor);
-        logger.log(Level.INFO, replaceByteResult);
-        JDBByteCode.byteCodePrint(getCompositeColorIterator, "getCompositeColor",
-                "C:\\Program Files (x86)\\Steam\\SteamApps\\common\\Wurm Unlimited Dedicated Server\\byte code prints");
+        Bytecode find = new Bytecode(wurmColor.getConstPool());
+        IntStream.range(1,8)
+                .forEach(value -> find.addOpcode(Opcode.NOP));
+
+        Bytecode replace = new Bytecode(wurmColor.getConstPool());
+        replace.addOpcode(Opcode.IF_ICMPEQ);
+        replace.add(0, 10);
+        replace.addOpcode(Opcode.ILOAD_2);
+        replace.addOpcode(Opcode.LDC);
+        findPoolResult = addConstantPoolReference(wurmColor.getConstPool(), "// int " + madderID);
+        replace.add(findPoolResult[1]);
+        boolean findResult = findReplaceCodeIterator(getCompositeColor.getCodeIterator(), find, replace);
+
+        ForageHerbData forageHerbData = new ForageHerbData("GSHORT_MADDER", 1000, Tiles.Tile.TILE_GRASS.id, GrassData.GrowthStage.SHORT,
+                (short) 575, madderID, (byte) 0, 1, 6, 20, 15, ModifiedBy.NO_TREES, 10);
+
+        ForageHerbData.extendForageEnumBytecode(pool, forageHerbData);
     }
 
-    private static void setGetCompositeColor(ClassFile cf, String desc, String name){
-        if (getCompositeColorMInfo == null || getCompositeColorIterator == null || getCompositeColorAttribute == null){
-            for (List a : new List[]{cf.getMethods()}){
-                for (Object b : a){
-                    MethodInfo MInfo = (MethodInfo) b;
-                    if (Objects.equals(MInfo.getDescriptor(), desc) && Objects.equals(MInfo.getName(), name)){
-                        getCompositeColorMInfo = MInfo;
-                        break;
-                    }
-                }
-            }
-            if (getCompositeColorMInfo == null){
-                throw new NullPointerException();
-            }
-            getCompositeColorAttribute = getCompositeColorMInfo.getCodeAttribute();
-            getCompositeColorIterator = getCompositeColorAttribute.iterator();
-        }
-    }
-    //</editor-fold>
-
-    //<editor-fold desc="Reflection methods section.">
-    @SuppressWarnings("unchecked")
+    /*
     private static void addWaxGourdForageReflection() throws NoSuchMethodException, NoSuchFieldException, IllegalAccessException, InstantiationException, InvocationTargetException {
 
         ArrayList forageEntries = ReflectionUtil.getPrivateField(aaaJoeCommon.forageDataClazz, ReflectionUtil.getField(aaaJoeCommon.forageDataClazz, "forageEntries"));
@@ -648,5 +634,5 @@ public class WurminianPacifistMod implements WurmMod, Initable, Configurable, Se
         herbEntries.add(herbDataIni.newInstance("BMED_MADDER", 1012, Tiles.Tile.TILE_BUSH.id, GrassData.GrowthStage.MEDIUM, (short) 575, madderID, (byte) 0, 6, 16, 20, 5, ModifiedBy.NOTHING, 0));
         herbEntries.add(herbDataIni.newInstance("BTALL_MADDER", 1013, Tiles.Tile.TILE_BUSH.id, GrassData.GrowthStage.TALL, (short) 575, madderID, (byte) 0, 6, 16, 20, 1, ModifiedBy.NOTHING, 0));
     }
-    //</editor-fold>
+    */
 }
