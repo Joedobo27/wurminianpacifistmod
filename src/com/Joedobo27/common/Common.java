@@ -1,15 +1,6 @@
 package com.Joedobo27.common;
 
 
-import com.Joedobo27.wurminianpacifist.JAssistClassData;
-import com.Joedobo27.wurminianpacifist.JAssistMethodData;
-import com.wurmonline.mesh.GrassData;
-import com.wurmonline.mesh.Tiles;
-import com.wurmonline.server.behaviours.Forage;
-import com.wurmonline.server.behaviours.ModifiedBy;
-import javassist.*;
-
-import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Objects;

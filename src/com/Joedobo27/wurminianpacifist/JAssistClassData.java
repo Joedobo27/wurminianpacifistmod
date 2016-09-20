@@ -17,11 +17,13 @@ class JAssistClassData {
     private CtClass ctClass;
     private ClassFile classFile;
     private ConstPool constPool;
+    private String classPath;
 
-    JAssistClassData(String classPath, ClassPool classPool) throws NotFoundException {
-        ctClass = classPool.get(classPath);
+    JAssistClassData(String _classPath, ClassPool classPool) throws NotFoundException {
+        ctClass = classPool.get(_classPath);
         classFile = ctClass.getClassFile();
         constPool = classFile.getConstPool();
+        classPath = _classPath;
     }
 
     CtClass getCtClass() {
@@ -36,10 +38,18 @@ class JAssistClassData {
         return constPool;
     }
 
-    public void constantPoolPrint(String destinationPath) throws FileNotFoundException {
+    String getClassPath() { return classPath;}
+
+    void constantPoolPrint(String destinationPath) {
         Path printPath = Paths.get(destinationPath);
-        PrintWriter out = new PrintWriter(printPath.toFile());
+        PrintWriter out = null;
+        try {
+            out = new PrintWriter(printPath.toFile());
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
         constPool.print(out);
+        //noinspection ConstantConditions
         out.close();
     }
 }

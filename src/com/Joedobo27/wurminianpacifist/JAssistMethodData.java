@@ -1,5 +1,6 @@
 package com.Joedobo27.wurminianpacifist;
 
+import javassist.CtConstructor;
 import javassist.CtMethod;
 import javassist.bytecode.AccessFlag;
 import javassist.bytecode.CodeAttribute;
@@ -8,6 +9,8 @@ import javassist.bytecode.MethodInfo;
 
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @SuppressWarnings("unused")
 class JAssistMethodData {
@@ -17,6 +20,8 @@ class JAssistMethodData {
     private CodeAttribute codeAttribute;
     private CodeIterator codeIterator;
     private CtMethod ctMethod;
+    private CtConstructor ctConstructor;
+    private static Logger logger = Logger.getLogger(JAssistMethodData.class.getName());
 
     JAssistMethodData(JAssistClassData jAssistClassData, String descriptor, String methodName) throws NullPointerException {
         parentClass = jAssistClassData;
@@ -30,25 +35,51 @@ class JAssistMethodData {
             throw new NullPointerException();
         codeAttribute = methodInfo.getCodeAttribute();
         codeIterator = codeAttribute.iterator();
-        setCtMethod(descriptor, methodName);
+        ctMethod = setCtMethod(descriptor, methodName);
+        ctConstructor = setCtConstructor(descriptor, methodName);
     }
 
-    private void setCtMethod(String descriptor, String methodName) {
-        boolean isPrivate = (parentClass.getClassFile().getAccessFlags() & (AccessFlag.PRIVATE)) != 0;
+    private CtMethod setCtMethod(String descriptor, String methodName) {
+        CtMethod toReturn;
+        boolean isPrivate = (methodInfo.getAccessFlags() & (AccessFlag.PRIVATE)) != 0;
         if (isPrivate){
-            ctMethod = Arrays.stream(parentClass.getCtClass().getDeclaredMethods())
-                    .filter((CtMethod value) -> Objects.equals(value.getGenericSignature(), descriptor))
-                    .filter((CtMethod value) -> Objects.equals(value.getName(), methodName))
-                    .findFirst()
-                    .orElse(null);
-        }
-        else {
-            ctMethod = Arrays.stream(parentClass.getCtClass().getMethods())
+            Arrays.stream(parentClass.getCtClass().getDeclaredMethods())
+                    .forEach(value -> logger.log(Level.INFO, "method "+ parentClass.getCtClass().getSimpleName() + " : "
+                            + value.getName() + " " + value.getSignature()));
+            toReturn = Arrays.stream(parentClass.getCtClass().getDeclaredMethods())
                     .filter((CtMethod value) -> Objects.equals(value.getSignature(), descriptor))
                     .filter((CtMethod value) -> Objects.equals(value.getName(), methodName))
                     .findFirst()
                     .orElse(null);
         }
+        else {
+            toReturn = Arrays.stream(parentClass.getCtClass().getMethods())
+                    .filter((CtMethod value) -> Objects.equals(value.getSignature(), descriptor))
+                    .filter((CtMethod value) -> Objects.equals(value.getName(), methodName))
+                    .findFirst()
+                    .orElse(null);
+        }
+        return toReturn;
+    }
+
+    private CtConstructor setCtConstructor(String descriptor, String methodName) {
+        CtConstructor toReturn;
+        boolean isPrivate = (methodInfo.getAccessFlags() & (AccessFlag.PRIVATE)) != 0;
+        if (isPrivate){
+            toReturn = Arrays.stream(parentClass.getCtClass().getDeclaredConstructors())
+                    .filter((CtConstructor value) -> Objects.equals(value.getSignature(), descriptor))
+                    .filter((CtConstructor value) -> Objects.equals(value.getName(), methodName))
+                    .findFirst()
+                    .orElse(null);
+        }
+        else {
+            toReturn = Arrays.stream(parentClass.getCtClass().getConstructors())
+                    .filter((CtConstructor value) -> Objects.equals(value.getSignature(), descriptor))
+                    .filter((CtConstructor value) -> Objects.equals(value.getName(), methodName))
+                    .findFirst()
+                    .orElse(null);
+        }
+        return toReturn;
     }
 
     MethodInfo getMethodInfo() {
@@ -70,6 +101,8 @@ class JAssistMethodData {
     CtMethod getCtMethod() {
         return ctMethod;
     }
+
+    CtConstructor getCtConstructor() {return ctConstructor;}
 
     /**
      * This method is used to check if the JVM code matches a hash. It's primary purpose is to detected changes in WU
