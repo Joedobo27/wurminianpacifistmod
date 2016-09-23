@@ -33,19 +33,38 @@ class ExtendForageEnum {
         ExtendForageEnum.initiatorCodeIterator = initiatorCodeAttribute.iterator();
     }
 
-    void addExtendEntry(String fieldName, int fieldOrdinal, String tileType, String growthStage, short action, int item, byte material,
+    /**
+     * A method to create data structures and add record a reference for that object.
+     *
+     * @param fieldName String type.
+     * @param tileType String type. A unique string for tileType, ie: TILE_GRASS. In WU this is a byte and is assigned by fetching
+     *                 a field value from Tiles.Tile enum. To avoid initializing the tile class use a string which is the same
+     *                 as the enum's field name.
+     * @param growthStage String type. In WU this is a GrassData$GrowthStage enum instance. To avoid initializing the GrowthStage class
+     *                    use a string which is the same as the enum's field name.
+     * @param action int type. See behaviours.Actions for a listing. In WU this is called "category".
+     * @param item int type. see item.ItemList for a listing.
+     * @param material byte type. if zero, then ItemFactory.createItem() will look up the template.getMaterial().
+     * @param chanceAt1Skill int type.
+     * @param chanceAt100Skill int type.
+     * @param difficultyAt1Skill int type.
+     * @param difficultyAt100Skill int type.
+     * @param modifiedByCategory String type. ie: NO_TREES. In WU this is a object from behaviours.ModifiedBy enum. To avoid
+     *                           initializing the ModifiedBy class use a string which is the same as the enum's field name.
+     * @param modifierValue int type. This is a bonus given if modifiedByCategory conditions is true.
+     */
+    void addExtendEntry(String fieldName, String tileType, String growthStage, short action, int item, byte material,
                         int chanceAt1Skill, int chanceAt100Skill, int difficultyAt1Skill, int difficultyAt100Skill, String modifiedByCategory,
                         int modifierValue){
-        ExtendForageEnum.EnumData enumData = new ExtendForageEnum.EnumData(fieldName, fieldOrdinal, tileType, growthStage, action, item, material, chanceAt1Skill,
+        ExtendForageEnum.EnumData enumData = new ExtendForageEnum.EnumData(fieldName, tileType, growthStage, action, item, material, chanceAt1Skill,
                 chanceAt100Skill, difficultyAt1Skill, difficultyAt100Skill, modifiedByCategory, modifierValue);
         toExtendEntries.add(enumData);
     }
 
     private class EnumData {
         String fieldName;
-        int fieldOrdinal;
         String tileType;
-        // This is normaly a byte field. a object has to be initiated to access the byte id. Instead use string.
+        // This is normally a byte field. a object has to be initiated to access the byte id. Instead use string.
         String growthStage;
         // Using a class GrassData$GrowthStage reference will initialize the class.
         short action;
@@ -64,11 +83,10 @@ class ExtendForageEnum {
         int modifierValue;
 
 
-        EnumData(String fieldName, int fieldOrdinal, String tileType, String growthStage, short action, int item, byte material,
+        EnumData(String fieldName, String tileType, String growthStage, short action, int item, byte material,
                  int chanceAt1Skill, int chanceAt100Skill, int difficultyAt1Skill, int difficultyAt100Skill, String modifiedByCategory,
                  int modifierValue){
             this.fieldName = fieldName;
-            this.fieldOrdinal = fieldOrdinal;
             this.tileType = tileType;
             this.growthStage = growthStage;
             this.action = action;
@@ -84,13 +102,11 @@ class ExtendForageEnum {
     }
 
     /**
-     * Intended to be used in WurmServerMod-Initable section and it's for bytecode changes.
+     * Intended to be used in WurmServerMod-initiate section and it's for bytecode changes. This adds field objects to the enum class.
      *
-     * @throws ClassNotFoundException forwarded, Javassist stuff.
-     * @throws NotFoundException forwarded, Javassist stuff.
      * @throws CannotCompileException forwarded, Javassist stuff.
      */
-    static void createFieldsInEnum() throws ClassNotFoundException, NotFoundException, CannotCompileException {
+    static void createFieldsInEnum() throws  CannotCompileException {
         if (toExtendEntries.size() == 0){
             throw new RuntimeException("Can not create fields without values in toExtendEntries arrayList.");
         }
@@ -102,6 +118,11 @@ class ExtendForageEnum {
         }
     }
 
+    /**
+     * Goes through the enum class's initiator to find index positions.
+     *
+     * @throws BadBytecode forwarded, Javassist stuff.
+     */
     private static void initiatorParser() throws BadBytecode {
         CodeIterator codeIterator = initiatorCodeIterator;
         // Get the byte code instruction index for
@@ -137,17 +158,9 @@ class ExtendForageEnum {
     }
 
     /**
-     * The Enum has a hidden class static initiator. In order to extend the enum it's "$VALUES" array field has to be resized.
-     * Given its flags FINAL the array is difficult to resize. This method uses Javassist bytecode to inject into the
-     * Enum's class initiator in order to expand the enum's $VALUES field.
-     *
-     * 10054: sipush        238
-     * 10057: anewarray     #4                 // class com/wurmonline/server/behaviours/Forage
-     * line 286: 10011
-     * line 33: 10054
+     * This method uses JA bytecode to inject into the Enum's class initiator in order to expand the enum's $VALUES field.
      *
      * @param expansion int value, expand the $VALUES field's size this much.
-     *
      * @throws BadBytecode forwarded, Javassist stuff.
      */
     private static void resizeEnumVALUES(int expansion) throws BadBytecode, ClassNotFoundException, NotFoundException {
@@ -184,6 +197,14 @@ class ExtendForageEnum {
         codeIterator.write(replace.get(), valuesSizerIndex);
     }
 
+    /**
+     * This method builds bytecode to inject into the enum's initiator. The injected code initializes new enum entries and adds
+     * a reference of that new object to the $VALUES array.
+     *
+     * @throws BadBytecode forwarded, JA stuff.
+     * @throws ClassNotFoundException forwarded, JA stuff.
+     * @throws NotFoundException forwarded, JA stuff.
+     */
     static void initiateEnumEntries() throws BadBytecode, ClassNotFoundException, NotFoundException {
         initiatorParser();
         Bytecode enumInitiator = new Bytecode(enumConstPool);
@@ -285,7 +306,7 @@ class ExtendForageEnum {
         int opCode = codeIterator.byteAt(instructionIndex);
         switch (opCode) {
             case Opcode.ICONST_M1:
-                return 0;
+                return -1;
             case Opcode.ICONST_0:
                 return 0;
             case Opcode.ICONST_1:
