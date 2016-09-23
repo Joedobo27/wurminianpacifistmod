@@ -14,6 +14,9 @@ import org.gotti.wurmunlimited.modloader.interfaces.*;
 import org.gotti.wurmunlimited.modsupport.IdFactory;
 import org.gotti.wurmunlimited.modsupport.IdType;
 import org.gotti.wurmunlimited.modsupport.ItemTemplateBuilder;
+import org.gotti.wurmunlimited.modsupport.actions.ActionPerformer;
+import org.gotti.wurmunlimited.modsupport.actions.BehaviourProvider;
+import org.gotti.wurmunlimited.modsupport.actions.ModAction;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -446,20 +449,20 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
         int modifierValue
         */
         ExtendHerbEnum extendHerbEnum = new ExtendHerbEnum(classPool);
-        extendHerbEnum.addExtendEntry("GSHORT_MADDER", 1000, "TILE_GRASS", "SHORT",(short) 575, madderID, (byte) 0, 1, 6, 20, 15, "NO_TREES", 10);
-        extendHerbEnum.addExtendEntry("GMED_MADDER", 1001, "TILE_GRASS", "MEDIUM", (short) 575, madderID, (byte)0, 1, 10, 20, 10, "NO_TREES", 20);
-        extendHerbEnum.addExtendEntry("GTALL_MADDER", 1002, "TILE_GRASS", "TALL", (short) 575, madderID, (byte) 0, 1, 20, 20, 5, "NO_TREES", 30);
-        extendHerbEnum.addExtendEntry("GWILD_MADDER",1003, "TILE_GRASS", "WILD", (short) 575, madderID, (byte) 0, 1, 40, 20, 1, "NO_TREES", 40);
-        extendHerbEnum.addExtendEntry("STEPPE_MADDER", 1004, "TILE_STEPPE", "SHORT", (short) 575, madderID, (byte) 0, 10, 46, 20, 1, "NO_TREES", 50);
-        extendHerbEnum.addExtendEntry("MARSH_MADDER", 1005, "TILE_MARSH", "SHORT", (short) 575, madderID, (byte) 0, 6, 26, 20, 20, "NO_TREES", 20);
-        extendHerbEnum.addExtendEntry("MOSS_MADDER", 1006, "TILE_MOSS", "SHORT", (short) 575, madderID, (byte) 0, 6, 26, 20, 20, "NO_TREES", 32);
-        extendHerbEnum.addExtendEntry("PEAT_MADDER", 1007,"TILE_PEAT", "SHORT", (short) 575, madderID, (byte) 0, 6, 6, 20, 20, "NO_TREES", 40);
-        extendHerbEnum.addExtendEntry("TSHORT_MADDER", 1008, "TILE_TREE", "SHORT", (short) 575, madderID, (byte) 0, 6, 16, 30, 20, "NOTHING", 0);
-        extendHerbEnum.addExtendEntry("TMED_MADDER", 1009, "TILE_TREE", "MEDIUM", (short) 575, madderID, (byte) 0, 6, 16, 30, 10, "NOTHING", 0);
-        extendHerbEnum.addExtendEntry("TTALL_MADDER", 1010, "TILE_TREE", "TALL", (short) 575, madderID, (byte) 0, 6, 16, 30, 1, "NOTHING", 0);
-        extendHerbEnum.addExtendEntry("BSHORT_MADDER", 1011, "TILE_BUSH", "SHORT", (short) 575, madderID, (byte) 0, 6, 16, 20, 10, "NOTHING", 0);
-        extendHerbEnum.addExtendEntry("BMED_MADDER", 1012, "TILE_BUSH", "MEDIUM", (short) 575, madderID, (byte) 0, 6, 16, 20, 5, "NOTHING", 0);
-        extendHerbEnum.addExtendEntry("BTALL_MADDER", 1013, "TILE_BUSH", "TALL", (short) 575, madderID, (byte) 0, 6, 16, 20, 1, "NOTHING", 0);
+        extendHerbEnum.addExtendEntry("GSHORT_MADDER", "TILE_GRASS", "SHORT",(short) 575, madderID, (byte) 0, 1, 6, 20, 15, "NO_TREES", 10);
+        extendHerbEnum.addExtendEntry("GMED_MADDER", "TILE_GRASS", "MEDIUM", (short) 575, madderID, (byte)0, 1, 10, 20, 10, "NO_TREES", 20);
+        extendHerbEnum.addExtendEntry("GTALL_MADDER", "TILE_GRASS", "TALL", (short) 575, madderID, (byte) 0, 1, 20, 20, 5, "NO_TREES", 30);
+        extendHerbEnum.addExtendEntry("GWILD_MADDER", "TILE_GRASS", "WILD", (short) 575, madderID, (byte) 0, 1, 40, 20, 1, "NO_TREES", 40);
+        extendHerbEnum.addExtendEntry("STEPPE_MADDER", "TILE_STEPPE", "SHORT", (short) 575, madderID, (byte) 0, 10, 46, 20, 1, "NO_TREES", 50);
+        extendHerbEnum.addExtendEntry("MARSH_MADDER", "TILE_MARSH", "SHORT", (short) 575, madderID, (byte) 0, 6, 26, 20, 20, "NO_TREES", 20);
+        extendHerbEnum.addExtendEntry("MOSS_MADDER", "TILE_MOSS", "SHORT", (short) 575, madderID, (byte) 0, 6, 26, 20, 20, "NO_TREES", 32);
+        extendHerbEnum.addExtendEntry("PEAT_MADDER", "TILE_PEAT", "SHORT", (short) 575, madderID, (byte) 0, 6, 6, 20, 20, "NO_TREES", 40);
+        extendHerbEnum.addExtendEntry("TSHORT_MADDER", "TILE_TREE", "SHORT", (short) 575, madderID, (byte) 0, 6, 16, 30, 20, "NOTHING", 0);
+        extendHerbEnum.addExtendEntry("TMED_MADDER", "TILE_TREE", "MEDIUM", (short) 575, madderID, (byte) 0, 6, 16, 30, 10, "NOTHING", 0);
+        extendHerbEnum.addExtendEntry("TTALL_MADDER", "TILE_TREE", "TALL", (short) 575, madderID, (byte) 0, 6, 16, 30, 1, "NOTHING", 0);
+        extendHerbEnum.addExtendEntry("BSHORT_MADDER", "TILE_BUSH", "SHORT", (short) 575, madderID, (byte) 0, 6, 16, 20, 10, "NOTHING", 0);
+        extendHerbEnum.addExtendEntry("BMED_MADDER", "TILE_BUSH", "MEDIUM", (short) 575, madderID, (byte) 0, 6, 16, 20, 5, "NOTHING", 0);
+        extendHerbEnum.addExtendEntry("BTALL_MADDER", "TILE_BUSH", "TALL", (short) 575, madderID, (byte) 0, 6, 16, 20, 1, "NOTHING", 0);
 
         ExtendHerbEnum.createFieldsInEnum();
         ExtendHerbEnum.initiateEnumEntries();
@@ -470,18 +473,18 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
             return;
         // Add fields to forage enum.
         ExtendForageEnum extendForageEnum = new ExtendForageEnum(classPool);
-        extendForageEnum.addExtendEntry("GSHORT_WAX_GOURD", 1000, "TILE_GRASS", "SHORT", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
-        extendForageEnum.addExtendEntry("GMED_WAX_GOURD", 1001, "TILE_GRASS", "MEDIUM", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
-        extendForageEnum.addExtendEntry("GTALL_WAX_GOURD", 1002, "TILE_GRASS", "TALL", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
-        extendForageEnum.addExtendEntry("GWILD_WAX_GOURD", 1003, "TILE_GRASS", "WILD", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
-        extendForageEnum.addExtendEntry("STEPPE_WAX_GOURD", 1004, "TILE_STEPPE", "SHORT", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
-        extendForageEnum.addExtendEntry("MARSH_WAX_GOURD", 1005, "TILE_MARSH", "SHORT", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
-        extendForageEnum.addExtendEntry("TSHORT_WAX_GOURD", 1006, "TILE_TREE", "SHORT", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
-        extendForageEnum.addExtendEntry("TMED_WAX_GOURD", 1007, "TILE_TREE", "MEDIUM", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
-        extendForageEnum.addExtendEntry("TTALL_WAX_GOURD", 1008, "TILE_TREE", "TALL", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
-        extendForageEnum.addExtendEntry("BSHORT_WAX_GOURD", 1009, "TILE_BUSH", "SHORT", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
-        extendForageEnum.addExtendEntry("BMED_WAX_GOURD", 1010, "TILE_BUSH", "MEDIUM", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
-        extendForageEnum.addExtendEntry("BTALL_WAX_GOURD", 1011, "TILE_BUSH", "TALL", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
+        extendForageEnum.addExtendEntry("GSHORT_WAX_GOURD", "TILE_GRASS", "SHORT", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
+        extendForageEnum.addExtendEntry("GMED_WAX_GOURD", "TILE_GRASS", "MEDIUM", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
+        extendForageEnum.addExtendEntry("GTALL_WAX_GOURD", "TILE_GRASS", "TALL", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
+        extendForageEnum.addExtendEntry("GWILD_WAX_GOURD", "TILE_GRASS", "WILD", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
+        extendForageEnum.addExtendEntry("STEPPE_WAX_GOURD", "TILE_STEPPE", "SHORT", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
+        extendForageEnum.addExtendEntry("MARSH_WAX_GOURD", "TILE_MARSH", "SHORT", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
+        extendForageEnum.addExtendEntry("TSHORT_WAX_GOURD", "TILE_TREE", "SHORT", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
+        extendForageEnum.addExtendEntry("TMED_WAX_GOURD", "TILE_TREE", "MEDIUM", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
+        extendForageEnum.addExtendEntry("TTALL_WAX_GOURD", "TILE_TREE", "TALL", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
+        extendForageEnum.addExtendEntry("BSHORT_WAX_GOURD", "TILE_BUSH", "SHORT", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
+        extendForageEnum.addExtendEntry("BMED_WAX_GOURD", "TILE_BUSH", "MEDIUM", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
+        extendForageEnum.addExtendEntry("BTALL_WAX_GOURD", "TILE_BUSH", "TALL", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
 
         ExtendForageEnum.createFieldsInEnum();
         ExtendForageEnum.initiateEnumEntries();
@@ -536,7 +539,8 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
         }
 
         if (waxGourdToFat) {
-
+            CreationEntry fat = CreationEntryCreator.createSimpleEntry(SkillList.BUTCHERING, ItemList.knifeButchering, waxGourdID,
+                    ItemList.tallow, false, true, 0.0f, false, false, CreationCategories.RESOURCES);
         }
         if (craftGourdCanteen) {
             CreationEntry gourdCanteen = CreationEntryCreator.createSimpleEntry(SkillList.BUTCHERING, ItemList.knifeCarving, waxGourdID,
