@@ -14,9 +14,6 @@ import org.gotti.wurmunlimited.modloader.interfaces.*;
 import org.gotti.wurmunlimited.modsupport.IdFactory;
 import org.gotti.wurmunlimited.modsupport.IdType;
 import org.gotti.wurmunlimited.modsupport.ItemTemplateBuilder;
-import org.gotti.wurmunlimited.modsupport.actions.ActionPerformer;
-import org.gotti.wurmunlimited.modsupport.actions.BehaviourProvider;
-import org.gotti.wurmunlimited.modsupport.actions.ModAction;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -60,6 +57,7 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
     private static int gourdCanteenID;
     private static int waxID;
     private static int cottonToolbeltID;
+    private static int dullGooID;
 
     static {
         logger = Logger.getLogger(WurminianPacifistMod.class.getName());
@@ -89,6 +87,7 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
         craftCottonToolBelt = Boolean.valueOf(properties.getProperty("craftCottonToolBelt", Boolean.toString(craftCottonToolBelt)));
         waxGourdID = Integer.parseInt(properties.getProperty("waxGourdID", Integer.toString(waxGourdID)));
         madderID = Integer.parseInt(properties.getProperty("madderID", Integer.toString(madderID)));
+        dullGooID = Integer.parseInt(properties.getProperty("dullGooID", Integer.toString(dullGooID)));
     }
 
     @Override
@@ -701,6 +700,9 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
 
     }
 
+    static int getDullGooID() {
+        return dullGooID;
+    }
 
     /*
     private static void addWaxGourdForageReflection() throws NoSuchMethodException, NoSuchFieldException, IllegalAccessException, InstantiationException, InvocationTargetException {
