@@ -14,6 +14,7 @@ import org.gotti.wurmunlimited.modloader.interfaces.*;
 import org.gotti.wurmunlimited.modsupport.IdFactory;
 import org.gotti.wurmunlimited.modsupport.IdType;
 import org.gotti.wurmunlimited.modsupport.ItemTemplateBuilder;
+import org.gotti.wurmunlimited.modsupport.actions.ModActions;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -313,6 +314,7 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
     @Override
     public void onServerStarted() {
         try {
+            ModActions.registerAction(new CreateEssenceAction());
             cottonCreationSubstitutes();
             waxGourdReflection();
             madderReflection();
@@ -326,6 +328,7 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
     @Override
     public void init() {
         try {
+            ModActions.init();
             redDyeFromMadderBytecode();
             waxGourdBytecode();
 
