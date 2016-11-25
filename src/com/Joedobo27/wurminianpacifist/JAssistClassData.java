@@ -10,6 +10,9 @@ import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @SuppressWarnings("unused")
 class JAssistClassData {
@@ -17,13 +20,29 @@ class JAssistClassData {
     private CtClass ctClass;
     private ClassFile classFile;
     private ConstPool constPool;
-    private String classPath;
+    private static HashMap<String, JAssistClassData> clazz;
+    private static Logger logger = Logger.getLogger(WurminianPacifistMod.class.getName());
 
-    JAssistClassData(String _classPath, ClassPool classPool) throws NotFoundException {
-        ctClass = classPool.get(_classPath);
+    JAssistClassData(String classPath, ClassPool classPool) throws NotFoundException {
+        ctClass = classPool.get(classPath);
         classFile = ctClass.getClassFile();
         constPool = classFile.getConstPool();
-        classPath = _classPath;
+        if (clazz == null)
+            intClassInstances();
+        clazz.put(ctClass.getSimpleName(), this);
+    }
+
+    private static void intClassInstances(){
+        clazz = new HashMap<>();
+    }
+
+    static JAssistClassData getClazz(String name) {
+        logger.log(Level.INFO, clazz.toString());
+        return clazz.get(name);
+    }
+
+    static void voidClazz() {
+        clazz.clear();
     }
 
     CtClass getCtClass() {
@@ -38,18 +57,11 @@ class JAssistClassData {
         return constPool;
     }
 
-    String getClassPath() { return classPath;}
-
-    void constantPoolPrint(String destinationPath) {
+    public void constantPoolPrint(String destinationPath) throws FileNotFoundException {
         Path printPath = Paths.get(destinationPath);
-        PrintWriter out = null;
-        try {
-            out = new PrintWriter(printPath.toFile());
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
+        PrintWriter out = new PrintWriter(printPath.toFile());
         constPool.print(out);
-        //noinspection ConstantConditions
         out.close();
     }
+
 }
