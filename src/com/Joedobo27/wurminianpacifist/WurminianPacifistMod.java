@@ -10,6 +10,7 @@ import javassist.bytecode.*;
 import javassist.expr.ExprEditor;
 import javassist.expr.MethodCall;
 import org.gotti.wurmunlimited.modloader.ReflectionUtil;
+import org.gotti.wurmunlimited.modloader.classhooks.CodeReplacer;
 import org.gotti.wurmunlimited.modloader.classhooks.HookManager;
 import org.gotti.wurmunlimited.modloader.interfaces.*;
 import org.gotti.wurmunlimited.modsupport.IdFactory;
@@ -23,11 +24,9 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.IntStream;
 
 import static com.Joedobo27.wurminianpacifist.BytecodeTools.addConstantPoolReference;
 import static com.Joedobo27.wurminianpacifist.BytecodeTools.findConstantPoolReference;
-import static com.Joedobo27.wurminianpacifist.BytecodeTools.findReplaceCodeIterator;
 
 @SuppressWarnings({"unused", "FieldCanBeLocal"})
 public class WurminianPacifistMod implements WurmServerMod, Initable, Configurable, ServerStartedListener, ItemTemplatesCreatedListener {
@@ -51,16 +50,17 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
     private static boolean waxGourdToFat = false;
     private static boolean craftCottonToolBelt = false;
     private static boolean enableEssenceSystem = false;
+    private static float gemQualityPer = 5.0f;
 
-    private static int towelItemID;
-    private static int cottonBedID;
-    private static int madderID = Integer.MAX_VALUE - 8;
-    private static int cheeseDrillID;
-    private static int waxGourdID = Integer.MAX_VALUE - 8;
-    private static int gourdCanteenID;
-    private static int cottonToolbeltID;
-    private static int dullGooID;
-    private static int essenceID;
+    private static int towelTemplateId;
+    private static int cottonBedTemplateId;
+    private static int madderTemplateId = Integer.MAX_VALUE - 8;
+    private static int cheeseDrillTemplateId;
+    private static int waxGourdTemplateId = Integer.MAX_VALUE - 8;
+    private static int gourdCanteenTemplateId;
+    private static int cottonToolbeltTemplateId;
+    private static int dullGooTemplateId;
+    private static int essenceTemplateId;
 
     static {
         logger = Logger.getLogger(WurminianPacifistMod.class.getName());
@@ -89,9 +89,10 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
         craftGourdCanteen = Boolean.parseBoolean(properties.getProperty("craftGourdCanteen", Boolean.toString(craftGourdCanteen)));
         waxGourdToFat = Boolean.parseBoolean(properties.getProperty("waxGourdToFat", Boolean.toString(waxGourdToFat)));
         craftCottonToolBelt = Boolean.parseBoolean(properties.getProperty("craftCottonToolBelt", Boolean.toString(craftCottonToolBelt)));
-        //waxGourdID = Integer.parseInt(properties.getProperty("waxGourdID", Integer.toString(waxGourdID)));
-        //madderID = Integer.parseInt(properties.getProperty("madderID", Integer.toString(madderID)));
-        //dullGooID = Integer.parseInt(properties.getProperty("dullGooID", Integer.toString(dullGooID)));
+        gemQualityPer = Float.parseFloat(properties.getProperty("gemQualityPer", Float.toString(gemQualityPer)));
+        //waxGourdTemplateId = Integer.parseInt(properties.getProperty("waxGourdTemplateId", Integer.toString(waxGourdTemplateId)));
+        //madderTemplateId = Integer.parseInt(properties.getProperty("madderTemplateId", Integer.toString(madderTemplateId)));
+        //dullGooTemplateId = Integer.parseInt(properties.getProperty("dullGooTemplateId", Integer.toString(dullGooTemplateId)));
     }
 
     @Override
@@ -112,7 +113,7 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
     public void onItemTemplatesCreated() {
         if (craftCottonPelt) {
             ItemTemplateBuilder towel = new ItemTemplateBuilder("jdbTowel");
-            towelItemID = IdFactory.getIdFor("jdbTowel", IdType.ITEMTEMPLATE);
+            towelTemplateId = IdFactory.getIdFor("jdbTowel", IdType.ITEMTEMPLATE);
             towel.name("towel", "towels", "A thick piece of cloth with many looped strings protruding from the surface.");
             towel.size(3);
             //towel.descriptions();
@@ -139,7 +140,7 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
         }
         if (enableEssenceSystem) {
             ItemTemplateBuilder dullGoo = new ItemTemplateBuilder("jdbDullGoo");
-            dullGooID = IdFactory.getIdFor("jdbDullGoo", IdType.ITEMTEMPLATE);
+            dullGooTemplateId = IdFactory.getIdFor("jdbDullGoo", IdType.ITEMTEMPLATE);
             dullGoo.name("Dull goo", "Dull goo", "It's gooey.");
             dullGoo.size(3);
             //cottonBed.descriptions();
@@ -165,7 +166,7 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
             }
 
             ItemTemplateBuilder essence = new ItemTemplateBuilder("jdbEssence");
-            essenceID = IdFactory.getIdFor("jdbEssence", IdType.ITEMTEMPLATE);
+            essenceTemplateId = IdFactory.getIdFor("jdbEssence", IdType.ITEMTEMPLATE);
             essence.name("Essence", "Essences", "An essence of rarity.");
             essence.size(3);
             //cottonBed.descriptions();
@@ -192,7 +193,7 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
         }
         if (craftCottonBed) {
             ItemTemplateBuilder cottonBed = new ItemTemplateBuilder("jdbCottonBed");
-            cottonBedID = IdFactory.getIdFor("jdbCottonBed", IdType.ITEMTEMPLATE);
+            cottonBedTemplateId = IdFactory.getIdFor("jdbCottonBed", IdType.ITEMTEMPLATE);
             cottonBed.name("Bed", "Beds", "A cosy bed with a thick cotton comforter.");
             cottonBed.size(3);
             //cottonBed.descriptions();
@@ -220,7 +221,7 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
         if (redDyeFromMadder) {
             // for now, using lovage graphic and MADDER's details.
             ItemTemplateBuilder madder = new ItemTemplateBuilder("jdbMadder");
-            madderID = IdFactory.getIdFor("jdbMadder", IdType.ITEMTEMPLATE);
+            madderTemplateId = IdFactory.getIdFor("jdbMadder", IdType.ITEMTEMPLATE);
             madder.name("Madder", "Madders", "A plant with vibrant red roots.");
             madder.size(3);
             //madder.descriptions();
@@ -249,7 +250,7 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
             // 1kg nettle + 1L watter is 1l Nettle tea (which is also a rennet)
             // 0.5L Nettle tea + 8L milk = 0.5 kg cheese. Use cheese's standard item stats.
             ItemTemplateBuilder cheeseDrill = new ItemTemplateBuilder("jdbCheeseDrill");
-            cheeseDrillID = IdFactory.getIdFor("jdbCheeseDrill", IdType.ITEMTEMPLATE);
+            cheeseDrillTemplateId = IdFactory.getIdFor("jdbCheeseDrill", IdType.ITEMTEMPLATE);
             cheeseDrill.name("cheese drill", "cheese drills", "A wooden press used to compress cheese curds and separate out whey.");
             cheeseDrill.size(3);
             //cheeseDrill.descriptions();
@@ -276,7 +277,7 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
         }
         if (craftCottonToolBelt) {
             ItemTemplateBuilder cottonToolBelt = new ItemTemplateBuilder("jdbCottonToolBelt");
-            cottonToolbeltID = IdFactory.getIdFor("jdbCottonToolBelt", IdType.ITEMTEMPLATE);
+            cottonToolbeltTemplateId = IdFactory.getIdFor("jdbCottonToolBelt", IdType.ITEMTEMPLATE);
             cottonToolBelt.name("toolbelt", "toolbelts", "An ingenious system of pockets, pouches, hooks and holes designed to keep a wide array of common tools.");
             cottonToolBelt.size(3);
             //cottonToolBelt.descriptions();
@@ -303,7 +304,7 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
         }
         if (craftGourdCanteen || waxGourdToFat){
             ItemTemplateBuilder waxGourd = new ItemTemplateBuilder("jdbWaxGourd");
-            waxGourdID = IdFactory.getIdFor("jdbWaxGourd", IdType.ITEMTEMPLATE);
+            waxGourdTemplateId = IdFactory.getIdFor("jdbWaxGourd", IdType.ITEMTEMPLATE);
             waxGourd.name("Wax gourd", "Wax gourds", "A hard shelled gourd with a narrow top and ball shaped bottom. Wax appears to be leaching out around it's stem.");
             waxGourd.size(3);
             //waxGourd.descriptions();
@@ -328,7 +329,7 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
                 e.printStackTrace();
             }
             ItemTemplateBuilder gourdCanteen = new ItemTemplateBuilder("jdbGourdCanteen");
-            gourdCanteenID = IdFactory.getIdFor("jdbGourdCanteen", IdType.ITEMTEMPLATE);
+            gourdCanteenTemplateId = IdFactory.getIdFor("jdbGourdCanteen", IdType.ITEMTEMPLATE);
             gourdCanteen.name("Gourd canteen", "Gourd canteens", "A hollowed out gourd for holding liquids.");
             gourdCanteen.size(3);
             //gourdCanteen.descriptions();
@@ -377,95 +378,16 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
         JAssistMethodData isBotanizable = new JAssistMethodData(server, "(II)Z", "isBotanizable");
         isForagable.getCtMethod().setBody("{ return true; }");
         isBotanizable.getCtMethod().setBody("{ return true; }");
+
     }
 
     private static void redDyeFromMadderBytecode() throws NotFoundException, BadBytecode, CannotCompileException, ClassNotFoundException {
         if (!redDyeFromMadder)
             return;
-        final int[] redDyeFromMadderSuccesses = new int[]{0};
+        final int[] redDyeFromMadderSuccesses = new int[]{0, 0};
 
-        // In CreationEntry.checkSaneAmounts()
-        // Byte code change: this.objectCreated != 73 to this.getObjectCreated() == 73
-        // Do this because it's not possible to instrument on a field and have the replace function use a returned value from a hook method.
-        JAssistClassData creationEntry = new JAssistClassData("com.wurmonline.server.items.CreationEntry", classPool);
-        JAssistMethodData checkSaneAmounts = new JAssistMethodData(creationEntry,
-                "(Lcom/wurmonline/server/items/Item;ILcom/wurmonline/server/items/Item;ILcom/wurmonline/server/items/ItemTemplate;Lcom/wurmonline/server/creatures/Creature;Z)V",
-                "checkSaneAmounts");
-
-        boolean isModifiedCheckSaneAmounts = true;
-        byte[] findPoolResult;
-        try {
-            //noinspection UnusedAssignment
-            findPoolResult = findConstantPoolReference(creationEntry.getConstPool(),
-                    "// Method com/Joedobo27/common/Common.checkSaneAmountsExceptionsHook:(III)I");
-        } catch (UnsupportedOperationException e) {
-            isModifiedCheckSaneAmounts = false;
-        }
-        if (isModifiedCheckSaneAmounts)
-            Arrays.fill(redDyeFromMadderSuccesses, 1);
-        if (!isModifiedCheckSaneAmounts) {
-            Bytecode find = new Bytecode(creationEntry.getConstPool());
-            find.addOpcode(Opcode.ALOAD_0);
-            find.addOpcode(Opcode.GETFIELD);
-            findPoolResult = findConstantPoolReference(creationEntry.getConstPool(), "// Field objectCreated:I");
-            find.add(findPoolResult[0], findPoolResult[1]);
-            find.addOpcode(Opcode.BIPUSH);
-            find.add(73);
-            logger.log(Level.INFO, Arrays.toString(find.get()));
-
-            Bytecode replace = new Bytecode(creationEntry.getConstPool());
-            replace.addOpcode(Opcode.ALOAD_0);
-            replace.addOpcode(Opcode.INVOKEVIRTUAL);
-            findPoolResult = addConstantPoolReference(creationEntry.getConstPool(), "// Method getObjectCreated:()I");
-            replace.add(findPoolResult[0], findPoolResult[1]);
-            replace.addOpcode(Opcode.BIPUSH);
-            replace.add(73);
-            logger.log(Level.INFO, Arrays.toString(replace.get()));
-
-            boolean replaceResult = findReplaceCodeIterator(checkSaneAmounts.getCodeIterator(), find, replace);
-            redDyeFromMadderSuccesses[0] = replaceResult ? 1 : 0;
-            logger.log(Level.FINE, "checkSaneAmounts find and replace: " + Boolean.toString(replaceResult));
-
-            checkSaneAmounts.getCtMethod().instrument(new ExprEditor() {
-                @Override
-                public void edit(MethodCall methodCall) throws CannotCompileException {
-                    if (Objects.equals("getObjectCreated", methodCall.getMethodName())) {
-                        methodCall.replace("$_ = com.Joedobo27.common.Common.checkSaneAmountsExceptionsHook( $0.getObjectCreated(), sourceMax, targetMax);");
-                        logger.log(Level.FINE, "CreationEntry.class, checkSaneAmounts(), installed hook at line: " + methodCall.getLineNumber());
-                        redDyeFromMadderSuccesses[1] = 1;
-                    }
-                }
-            });
-        }
-
-
-        //<editor-fold desc="Within WurmColor change getCompositeColor()">
-        // insert 7 wide gap at line 9.
-        // this--if (itemTemplateId == 439) {
-        // becomes-- if (itemTemplateId == 439 || itemTemplateID == ??) {
-        // Where ?? is a value picked for Madder and inserted with with ConstantPool.addIntegerInfo()
-        //</editor-fold>
-        JAssistClassData wurmColor = new JAssistClassData("com.wurmonline.server.items.WurmColor", classPool);
-        JAssistMethodData getCompositeColor = new JAssistMethodData(wurmColor, "(IIIF)I", "getCompositeColor");
-
-        getCompositeColor.getCodeIterator().insertGap(9, 7);
-
-        Bytecode find = new Bytecode(wurmColor.getConstPool());
-        IntStream.range(1,8)
-                .forEach(value -> find.addOpcode(Opcode.NOP));
-
-        Bytecode replace = new Bytecode(wurmColor.getConstPool());
-        replace.addOpcode(Opcode.IF_ICMPEQ);
-        replace.add(0, 10);
-        replace.addOpcode(Opcode.ILOAD_2);
-        replace.addOpcode(Opcode.LDC);
-        findPoolResult = addConstantPoolReference(wurmColor.getConstPool(), "// int " + madderID);
-        replace.add(findPoolResult[1]);
-        boolean findResult = findReplaceCodeIterator(getCompositeColor.getCodeIterator(), find, replace);
-        getCompositeColor.getMethodInfo().rebuildStackMapIf6(classPool, wurmColor.getClassFile());
-
-
-
+        redDyeFromMadderSuccesses[0] = checkSaneAmountsBytecodeAlter() ? 1 : 0;
+        redDyeFromMadderSuccesses[1] = getCompositeColorBytecodeAlter() ? 1 : 0;
         //<editor-fold desc="Add fields to herb enum.">
         /*
         int fieldNumber
@@ -484,38 +406,159 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
         */
         //</editor-fold>
         ExtendHerbEnum extendHerbEnum = new ExtendHerbEnum(classPool);
-        extendHerbEnum.addExtendEntry("GSHORT_MADDER", "TILE_GRASS", "SHORT",(short) 575, madderID, (byte) 0, 1, 6, 20, 15, "NO_TREES", 10);
-        extendHerbEnum.addExtendEntry("GMED_MADDER", "TILE_GRASS", "MEDIUM", (short) 575, madderID, (byte)0, 1, 10, 20, 10, "NO_TREES", 20);
-        extendHerbEnum.addExtendEntry("GTALL_MADDER", "TILE_GRASS", "TALL", (short) 575, madderID, (byte) 0, 1, 20, 20, 5, "NO_TREES", 30);
-        extendHerbEnum.addExtendEntry("GWILD_MADDER", "TILE_GRASS", "WILD", (short) 575, madderID, (byte) 0, 1, 40, 20, 1, "NO_TREES", 40);
-        extendHerbEnum.addExtendEntry("STEPPE_MADDER", "TILE_STEPPE", "SHORT", (short) 575, madderID, (byte) 0, 10, 46, 20, 1, "NO_TREES", 50);
-        extendHerbEnum.addExtendEntry("MARSH_MADDER", "TILE_MARSH", "SHORT", (short) 575, madderID, (byte) 0, 6, 26, 20, 20, "NO_TREES", 20);
-        extendHerbEnum.addExtendEntry("MOSS_MADDER", "TILE_MOSS", "SHORT", (short) 575, madderID, (byte) 0, 6, 26, 20, 20, "NO_TREES", 32);
-        extendHerbEnum.addExtendEntry("PEAT_MADDER", "TILE_PEAT", "SHORT", (short) 575, madderID, (byte) 0, 6, 6, 20, 20, "NO_TREES", 40);
-        extendHerbEnum.addExtendEntry("TSHORT_MADDER", "TILE_TREE", "SHORT", (short) 575, madderID, (byte) 0, 6, 16, 30, 20, "NOTHING", 0);
-        extendHerbEnum.addExtendEntry("TMED_MADDER", "TILE_TREE", "MEDIUM", (short) 575, madderID, (byte) 0, 6, 16, 30, 10, "NOTHING", 0);
-        extendHerbEnum.addExtendEntry("TTALL_MADDER", "TILE_TREE", "TALL", (short) 575, madderID, (byte) 0, 6, 16, 30, 1, "NOTHING", 0);
-        extendHerbEnum.addExtendEntry("BSHORT_MADDER", "TILE_BUSH", "SHORT", (short) 575, madderID, (byte) 0, 6, 16, 20, 10, "NOTHING", 0);
-        extendHerbEnum.addExtendEntry("BMED_MADDER", "TILE_BUSH", "MEDIUM", (short) 575, madderID, (byte) 0, 6, 16, 20, 5, "NOTHING", 0);
-        extendHerbEnum.addExtendEntry("BTALL_MADDER", "TILE_BUSH", "TALL", (short) 575, madderID, (byte) 0, 6, 16, 20, 1, "NOTHING", 0);
+        extendHerbEnum.addExtendEntry("GSHORT_MADDER", "TILE_GRASS", "SHORT",(short) 575, madderTemplateId, (byte) 0, 1, 6, 20, 15, "NO_TREES", 10);
+        extendHerbEnum.addExtendEntry("GMED_MADDER", "TILE_GRASS", "MEDIUM", (short) 575, madderTemplateId, (byte)0, 1, 10, 20, 10, "NO_TREES", 20);
+        extendHerbEnum.addExtendEntry("GTALL_MADDER", "TILE_GRASS", "TALL", (short) 575, madderTemplateId, (byte) 0, 1, 20, 20, 5, "NO_TREES", 30);
+        extendHerbEnum.addExtendEntry("GWILD_MADDER", "TILE_GRASS", "WILD", (short) 575, madderTemplateId, (byte) 0, 1, 40, 20, 1, "NO_TREES", 40);
+        extendHerbEnum.addExtendEntry("STEPPE_MADDER", "TILE_STEPPE", "SHORT", (short) 575, madderTemplateId, (byte) 0, 10, 46, 20, 1, "NO_TREES", 50);
+        extendHerbEnum.addExtendEntry("MARSH_MADDER", "TILE_MARSH", "SHORT", (short) 575, madderTemplateId, (byte) 0, 6, 26, 20, 20, "NO_TREES", 20);
+        extendHerbEnum.addExtendEntry("MOSS_MADDER", "TILE_MOSS", "SHORT", (short) 575, madderTemplateId, (byte) 0, 6, 26, 20, 20, "NO_TREES", 32);
+        extendHerbEnum.addExtendEntry("PEAT_MADDER", "TILE_PEAT", "SHORT", (short) 575, madderTemplateId, (byte) 0, 6, 6, 20, 20, "NO_TREES", 40);
+        extendHerbEnum.addExtendEntry("TSHORT_MADDER", "TILE_TREE", "SHORT", (short) 575, madderTemplateId, (byte) 0, 6, 16, 30, 20, "NOTHING", 0);
+        extendHerbEnum.addExtendEntry("TMED_MADDER", "TILE_TREE", "MEDIUM", (short) 575, madderTemplateId, (byte) 0, 6, 16, 30, 10, "NOTHING", 0);
+        extendHerbEnum.addExtendEntry("TTALL_MADDER", "TILE_TREE", "TALL", (short) 575, madderTemplateId, (byte) 0, 6, 16, 30, 1, "NOTHING", 0);
+        extendHerbEnum.addExtendEntry("BSHORT_MADDER", "TILE_BUSH", "SHORT", (short) 575, madderTemplateId, (byte) 0, 6, 16, 20, 10, "NOTHING", 0);
+        extendHerbEnum.addExtendEntry("BMED_MADDER", "TILE_BUSH", "MEDIUM", (short) 575, madderTemplateId, (byte) 0, 6, 16, 20, 5, "NOTHING", 0);
+        extendHerbEnum.addExtendEntry("BTALL_MADDER", "TILE_BUSH", "TALL", (short) 575, madderTemplateId, (byte) 0, 6, 16, 20, 1, "NOTHING", 0);
 
         ExtendHerbEnum.createFieldsInEnum();
         ExtendHerbEnum.initiateEnumEntries();
+    }
 
-        JAssistClassData herb = new JAssistClassData("com.wurmonline.server.behaviours.Herb", classPool);
-        /*
-        // Add a itemTemplateId setter to herb enum. madderID isn't known until templates finished loading and bytecode must be done before.
-        // Use a default value of Integer.MAX_VALUE - 8 and then go back after templates load to update it. In preInit itemType field modifier final removed.
-        JAssistClassData herb = JAssistClassData.getClazz("Herb");
-        if (herb == null)
-            throw new NullPointerException("Can't find Herb data object in JAssistClassData.");
-        CtMethod ctMethod = CtNewMethod.make(
-                "public void setHerbItemType(int i) { itemType = i; }",
-                herb.getCtClass());
-        herb.getCtClass().addMethod(ctMethod);
-        */
-        CtField herbItemType = herb.getCtClass().getDeclaredField("itemType");
-        herbItemType.setModifiers(herbItemType.getModifiers() & ~Modifier.FINAL );
+    /**
+     * In CreationEntry.checkSaneAmounts()
+     * Byte code change: this.objectCreated != 73 to this.getObjectCreated() == 73
+     * Do this because it's not possible to instrument on a field and have the replace function use a returned value
+     * form a hook method.
+     * Then, expression editor hook into getObjectCreated and replace returned with checkSaneAmountsExceptionsHook.
+     * Using the hook instead of straight bytecode because it lets me use variable names form WU code.
+     *
+     * This change needs to be made because it blocks using very small things that can be combined.
+     *
+     * @return boolean type. Was the change successful?
+     * @throws BadBytecode JA related, forwarded
+     * @throws NotFoundException JA related, forwarded
+     * @throws CannotCompileException JA related, forwarded
+     */
+    private static boolean checkSaneAmountsBytecodeAlter() throws BadBytecode, NotFoundException, CannotCompileException {
+        final boolean[] toReturn = {false};
+        JAssistClassData creationEntry = JAssistClassData.getClazz("CreationEntry");
+        if (creationEntry == null)
+            creationEntry = new JAssistClassData("com.wurmonline.server.items.CreationEntry", classPool);
+        JAssistMethodData checkSaneAmounts = new JAssistMethodData(creationEntry,
+                "(Lcom/wurmonline/server/items/Item;ILcom/wurmonline/server/items/Item;ILcom/wurmonline/server/items/ItemTemplate;Lcom/wurmonline/server/creatures/Creature;Z)V",
+                "checkSaneAmounts");
+
+        boolean isModifiedCheckSaneAmounts = true;
+        byte[] findPoolResult;
+        try {
+            findConstantPoolReference(creationEntry.getConstPool(),
+                    "// Method com/Joedobo27/common/Common.checkSaneAmountsExceptionsHook:(III)I");
+        } catch (UnsupportedOperationException e) {
+            isModifiedCheckSaneAmounts = false;
+        }
+        if (isModifiedCheckSaneAmounts)
+            toReturn[0] = true;
+        if (!isModifiedCheckSaneAmounts) {
+            Bytecode find = new Bytecode(creationEntry.getConstPool());
+            find.addOpcode(Opcode.ALOAD_0);
+            find.addOpcode(Opcode.GETFIELD);
+            findPoolResult = findConstantPoolReference(creationEntry.getConstPool(), "// Field objectCreated:I");
+            find.add(findPoolResult[0], findPoolResult[1]);
+            find.addOpcode(Opcode.BIPUSH);
+            find.add(73);
+
+            Bytecode replace = new Bytecode(creationEntry.getConstPool());
+            replace.addOpcode(Opcode.ALOAD_0);
+            replace.addOpcode(Opcode.INVOKEVIRTUAL);
+            findPoolResult = addConstantPoolReference(creationEntry.getConstPool(), "// Method getObjectCreated:()I");
+            replace.add(findPoolResult[0], findPoolResult[1]);
+            replace.addOpcode(Opcode.BIPUSH);
+            replace.add(73);
+
+            CodeReplacer codeReplacer = new CodeReplacer(checkSaneAmounts.getCodeAttribute());
+            try {
+                codeReplacer.replaceCode(find.get(), replace.get());
+            } catch (NotFoundException e){
+                toReturn[0] = false;
+            }
+
+            checkSaneAmounts.getCtMethod().instrument(new ExprEditor() {
+                @Override
+                public void edit(MethodCall methodCall) throws CannotCompileException {
+                    if (Objects.equals("getObjectCreated", methodCall.getMethodName())) {
+                        methodCall.replace("$_ = com.Joedobo27.common.Common.checkSaneAmountsExceptionsHook( $0.getObjectCreated(), sourceMax, targetMax);");
+                        logger.log(Level.FINE, "CreationEntry.class, checkSaneAmounts(), installed hook at line: " + methodCall.getLineNumber());
+                        toReturn[0] = true;
+                    }
+                }
+            });
+        }
+        return toReturn[0];
+    }
+
+    /**
+     * Change getCompositeColor() in WurmColor so madder can be used as a dye creation material.
+     * was-
+     *  if (itemTemplateId == 439) {...}
+     *
+     * becomes-
+     *  boolean isRed = com.Joedobo27.wurminianpacifist.WurminianPacifistMod.isRedPaintItem(itemTemplateId);
+     *  if (isRed) {...}
+     *
+     * @return boolean type, Does itemTemplate in arg0 make red dye?
+     * @throws NotFoundException JA related, forwarded.
+     */
+    private static boolean getCompositeColorBytecodeAlter() throws NotFoundException, BadBytecode {
+        boolean toReturn;
+        JAssistClassData wurmColor = JAssistClassData.getClazz("WurmColor");
+        if (wurmColor == null)
+            wurmColor = new JAssistClassData("com.wurmonline.server.items.WurmColor", classPool);
+        JAssistMethodData getCompositeColor = new JAssistMethodData(wurmColor, "(IIIF)I", "getCompositeColor");
+
+        byte[] bytes;
+        Bytecode find = new Bytecode(wurmColor.getConstPool());
+        find.addOpcode(Opcode.ILOAD_2);
+        find.addOpcode(Opcode.SIPUSH);
+        bytes = BytecodeTools.intToByteArray(439, 2);
+        find.add(bytes[0], bytes[1]);
+        find.addOpcode(Opcode.IF_ICMPNE); // 9: if_icmpne     63
+        bytes = BytecodeTools.intToByteArray(54, 2);
+        find.add(bytes[0], bytes[1]);
+        find.addOpcode(Opcode.ILOAD_0);
+        find.addOpcode(Opcode.INVOKESTATIC);
+        bytes = findConstantPoolReference(wurmColor.getConstPool(),"// Method getColorRed:(I)I");
+        find.add(bytes[0], bytes[1]);
+
+        Bytecode replace = new Bytecode(wurmColor.getConstPool());
+        replace.addOpcode(Opcode.ILOAD_2);
+        replace.addOpcode(Opcode.INVOKESTATIC);
+        bytes = addConstantPoolReference(wurmColor.getConstPool(),
+                "// Method com/Joedobo27/wurminianpacifist/WurminianPacifistMod.isRedPaintItem:(I)Z");
+        replace.add(bytes[0], bytes[1]);
+        replace.addOpcode(Opcode.IFEQ);
+        bytes = BytecodeTools.intToByteArray(54, 2);
+        replace.add(bytes[0], bytes[1]);
+        replace.addOpcode(Opcode.ILOAD_0);
+        replace.addOpcode(Opcode.INVOKESTATIC);
+        bytes = findConstantPoolReference(wurmColor.getConstPool(),"// Method getColorRed:(I)I");
+        replace.add(bytes[0], bytes[1]);
+
+        CodeReplacer codeReplacer = new CodeReplacer(getCompositeColor.getCodeAttribute());
+        try {
+            codeReplacer.replaceCode(find.get(), replace.get());
+            toReturn = true;
+        } catch (NotFoundException e) {
+            toReturn = false;
+        }
+        if (toReturn) {
+            getCompositeColor.getMethodInfo().rebuildStackMapIf6(classPool, wurmColor.getClassFile());
+        }
+        return toReturn;
+    }
+
+    public static boolean isRedPaintItem(int itemTemplateId) {
+        return itemTemplateId == ItemList.cochineal || itemTemplateId == madderTemplateId;
     }
 
     private static void waxGourdBytecode() throws ClassNotFoundException, NotFoundException, CannotCompileException, BadBytecode {
@@ -523,41 +566,26 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
             return;
         // Add fields to forage enum.
         ExtendForageEnum extendForageEnum = new ExtendForageEnum(classPool);
-        extendForageEnum.addExtendEntry("GSHORT_WAX_GOURD", "TILE_GRASS", "SHORT", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
-        extendForageEnum.addExtendEntry("GMED_WAX_GOURD", "TILE_GRASS", "MEDIUM", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
-        extendForageEnum.addExtendEntry("GTALL_WAX_GOURD", "TILE_GRASS", "TALL", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
-        extendForageEnum.addExtendEntry("GWILD_WAX_GOURD", "TILE_GRASS", "WILD", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
-        extendForageEnum.addExtendEntry("STEPPE_WAX_GOURD", "TILE_STEPPE", "SHORT", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
-        extendForageEnum.addExtendEntry("MARSH_WAX_GOURD", "TILE_MARSH", "SHORT", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
-        extendForageEnum.addExtendEntry("TSHORT_WAX_GOURD", "TILE_TREE", "SHORT", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
-        extendForageEnum.addExtendEntry("TMED_WAX_GOURD", "TILE_TREE", "MEDIUM", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
-        extendForageEnum.addExtendEntry("TTALL_WAX_GOURD", "TILE_TREE", "TALL", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
-        extendForageEnum.addExtendEntry("BSHORT_WAX_GOURD", "TILE_BUSH", "SHORT", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
-        extendForageEnum.addExtendEntry("BMED_WAX_GOURD", "TILE_BUSH", "MEDIUM", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
-        extendForageEnum.addExtendEntry("BTALL_WAX_GOURD", "TILE_BUSH", "TALL", (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
+        extendForageEnum.addExtendEntry("GSHORT_WAX_GOURD", "TILE_GRASS", "SHORT", (short) 570, waxGourdTemplateId, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
+        extendForageEnum.addExtendEntry("GMED_WAX_GOURD", "TILE_GRASS", "MEDIUM", (short) 570, waxGourdTemplateId, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
+        extendForageEnum.addExtendEntry("GTALL_WAX_GOURD", "TILE_GRASS", "TALL", (short) 570, waxGourdTemplateId, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
+        extendForageEnum.addExtendEntry("GWILD_WAX_GOURD", "TILE_GRASS", "WILD", (short) 570, waxGourdTemplateId, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
+        extendForageEnum.addExtendEntry("STEPPE_WAX_GOURD", "TILE_STEPPE", "SHORT", (short) 570, waxGourdTemplateId, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
+        extendForageEnum.addExtendEntry("MARSH_WAX_GOURD", "TILE_MARSH", "SHORT", (short) 570, waxGourdTemplateId, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
+        extendForageEnum.addExtendEntry("TSHORT_WAX_GOURD", "TILE_TREE", "SHORT", (short) 570, waxGourdTemplateId, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
+        extendForageEnum.addExtendEntry("TMED_WAX_GOURD", "TILE_TREE", "MEDIUM", (short) 570, waxGourdTemplateId, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
+        extendForageEnum.addExtendEntry("TTALL_WAX_GOURD", "TILE_TREE", "TALL", (short) 570, waxGourdTemplateId, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
+        extendForageEnum.addExtendEntry("BSHORT_WAX_GOURD", "TILE_BUSH", "SHORT", (short) 570, waxGourdTemplateId, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
+        extendForageEnum.addExtendEntry("BMED_WAX_GOURD", "TILE_BUSH", "MEDIUM", (short) 570, waxGourdTemplateId, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
+        extendForageEnum.addExtendEntry("BTALL_WAX_GOURD", "TILE_BUSH", "TALL", (short) 570, waxGourdTemplateId, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
 
         ExtendForageEnum.createFieldsInEnum();
         ExtendForageEnum.initiateEnumEntries();
-
-        JAssistClassData forage = new JAssistClassData("com.wurmonline.server.behaviours.Forage", classPool);
-        CtField forageItemType = forage.getCtClass().getDeclaredField("itemType");
-        forageItemType.setModifiers(forageItemType.getModifiers() & ~Modifier.FINAL );
-        /*
-        // Add a itemTemplateId setter to forage enum. waxGourdID isn't known until templates finished loading and bytecode must be done before.
-        // Use a default value of Integer.MAX_VALUE - 8 and then go back after templates load to update it. In preInit itemType field modifier final removed.
-        JAssistClassData forage = JAssistClassData.getClazz("Forage");
-        if (forage == null)
-            throw new NullPointerException("Can't find Forage data object in JAssistClassData.");
-        CtMethod ctMethod = CtNewMethod.make(
-                "public void setForageItemType(int i) { itemType = i; }",
-                forage.getCtClass());
-        forage.getCtClass().addMethod(ctMethod);
-        */
     }
 
     private static void cottonCreationSubstitutes() {
         if (craftCottonBed) {
-            AdvancedCreationEntry bed = CreationEntryCreator.createAdvancedEntry(10044, 482, 483, cottonBedID, false, false, 0.0f, true, true, CreationCategories.FURNITURE);
+            AdvancedCreationEntry bed = CreationEntryCreator.createAdvancedEntry(10044, 482, 483, cottonBedTemplateId, false, false, 0.0f, true, true, CreationCategories.FURNITURE);
             bed.addRequirement(new CreationRequirement(1, 485, 1, true));
             bed.addRequirement(new CreationRequirement(4, 486, 4, true));
             bed.addRequirement(new CreationRequirement(10, 144, 10, true));
@@ -565,18 +593,18 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
         }
         if (craftCottonPelt) {
             CreationEntry towel = CreationEntryCreator.createSimpleEntry(SkillList.CLOTHTAILORING, ItemList.clothYard,
-                    ItemList.clothString, towelItemID, true, true, 0.0f, false, false, CreationCategories.TOOL_PARTS);
+                    ItemList.clothString, towelTemplateId, true, true, 0.0f, false, false, CreationCategories.TOOL_PARTS);
             towel.setDepleteFromSource(squareGramsInTowel);
             towel.setDepleteFromTarget(stringGramsInTowel);
             CreationEntry pelt = CreationEntryCreator.createSimpleEntry(SkillList.CLOTHTAILORING, ItemList.scissors,
-                    towelItemID, ItemList.pelt, false, true, 0.0f, false, false, CreationCategories.TOOLS);
+                    towelTemplateId, ItemList.pelt, false, true, 0.0f, false, false, CreationCategories.TOOLS);
             pelt.setDepleteFromTarget(towelGrams);
             logger.log(Level.INFO, "Cotton Pelt created and a away to craft it added.");
         }
 
         if (cheeseDrillWithCloth) {
             AdvancedCreationEntry clothCheeseDrill = CreationEntryCreator.createAdvancedEntry(SkillList.CARPENTRY_FINE, ItemList.plank, ItemList.shaft,
-                    cheeseDrillID, false, false, 0.0f, true, false, CreationCategories.TOOLS);
+                    cheeseDrillTemplateId, false, false, 0.0f, true, false, CreationCategories.TOOLS);
             clothCheeseDrill.addRequirement(new CreationRequirement(1, ItemList.plank, 4, true));
             clothCheeseDrill.addRequirement(new CreationRequirement(2, ItemList.sprout, 2, true));
             clothCheeseDrill.addRequirement(new CreationRequirement(3, ItemList.nailsIronSmall, 1, true));
@@ -585,7 +613,7 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
         }
         if (craftCottonToolBelt) {
             CreationEntry cottonToolBelt = CreationEntryCreator.createSimpleEntry(SkillList.CLOTHTAILORING, ItemList.metalHooks, ItemList.clothYard,
-                    cottonToolbeltID, true, true, 0.0f, false, false, CreationCategories.CLOTHES);
+                    cottonToolbeltTemplateId, true, true, 0.0f, false, false, CreationCategories.CLOTHES);
             cottonToolBelt.setDepleteFromTarget(1500);
         }
     }
@@ -595,6 +623,7 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
         if (!craftGourdCanteen && !waxGourdToFat)
             return;
         Class forageClass = Class.forName("com.wurmonline.server.behaviours.Forage");
+        /*
         Forage[] values = ReflectionUtil.getPrivateField(forageClass, ReflectionUtil.getField(
                 forageClass, "$VALUES"));
 
@@ -602,24 +631,24 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
             String name = f == null ? "null" : f.name();
             logger.log(Level.INFO, String.format("name %s", name));
         }
+        */
         Field itemType = ReflectionUtil.getField(Class.forName("com.wurmonline.server.behaviours.Herb"), "itemType");
         CharSequence waxGourd = "WAX_GOURD";
         for (Herb herb : Herb.values()){
             if (herb.name().contains(waxGourd)) {
-                ReflectionUtil.setPrivateField(herb, itemType, waxGourdID);
+                ReflectionUtil.setPrivateField(herb, itemType, waxGourdTemplateId);
             }
         }
 
         if (waxGourdToFat) {
-            CreationEntry fat = CreationEntryCreator.createSimpleEntry(SkillList.BUTCHERING, ItemList.knifeButchering, waxGourdID,
+            CreationEntry fat = CreationEntryCreator.createSimpleEntry(SkillList.BUTCHERING, ItemList.knifeButchering, waxGourdTemplateId,
                     ItemList.tallow, false, true, 0.0f, false, false, CreationCategories.RESOURCES);
         }
         if (craftGourdCanteen) {
-            CreationEntry gourdCanteen = CreationEntryCreator.createSimpleEntry(SkillList.BUTCHERING, ItemList.knifeCarving, waxGourdID,
-                    gourdCanteenID, false, true, 0.0f, false, false, CreationCategories.CONTAINER);
+            CreationEntry gourdCanteen = CreationEntryCreator.createSimpleEntry(SkillList.BUTCHERING, ItemList.knifeCarving, waxGourdTemplateId,
+                    gourdCanteenTemplateId, false, true, 0.0f, false, false, CreationCategories.CONTAINER);
         }
     }
-
 
     private static void madderReflection() throws ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException,
     InvocationTargetException, NoSuchFieldException {
@@ -629,14 +658,14 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
             CharSequence madder = "MADDER";
             for (Forage forage : Forage.values()){
                 if (forage.name().contains(madder)) {
-                    ReflectionUtil.setPrivateField(forage, itemType, madderID);
+                    ReflectionUtil.setPrivateField(forage, itemType, madderTemplateId);
                 }
             }
 
             // Add red dye making recipe.
             CreationEntry redMadder = CreationEntryCreator.createSimpleEntry(SkillList.ALCHEMY_NATURAL, ItemList.water,
-                    madderID, ItemList.dyeRed, true, true, 0.0f, false, false, CreationCategories.DYES);
-            int[] exceptions = {madderID, ItemList.dyeRed, ItemList.dye, ItemList.lye};
+                    madderTemplateId, ItemList.dyeRed, true, true, 0.0f, false, false, CreationCategories.DYES);
+            int[] exceptions = {madderTemplateId, ItemList.dyeRed, ItemList.dye, ItemList.lye};
             Common.addExceptions(exceptions);
         }
     }
@@ -782,53 +811,11 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
 
     }
 
-    static int getDullGooID() {
-        return dullGooID;
+    static int getDullGooTemplateId() {
+        return dullGooTemplateId;
     }
 
-    /*
-    private static void addWaxGourdForageReflection() throws NoSuchMethodException, NoSuchFieldException, IllegalAccessException, InstantiationException, InvocationTargetException {
+    static float getGemQualityPer() { return gemQualityPer;}
 
-        ArrayList forageEntries = ReflectionUtil.getPrivateField(aaaJoeCommon.forageDataClazz, ReflectionUtil.getField(aaaJoeCommon.forageDataClazz, "forageEntries"));
-        Constructor forageDataIni = aaaJoeCommon.forageDataClazz.getConstructor(String.class, Integer.TYPE, Byte.TYPE, GrassData.GrowthStage.class,
-                Short.TYPE, Integer.TYPE, Byte.TYPE, Integer.TYPE, Integer.TYPE, Integer.TYPE, Integer.TYPE, ModifiedBy.class,
-                Integer.TYPE);
-        logger.log(Level.INFO, "Clazz " + aaaJoeCommon.forageDataClazz.getName());
-        logger.log(Level.INFO, "Const " + forageDataIni.toString());
-        forageEntries.add(forageDataIni.newInstance("GSHORT_WAX_GOURD", 1000, Tiles.Tile.TILE_GRASS.id, GrassData.GrowthStage.SHORT, (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
-        forageEntries.add(forageDataIni.newInstance("GMED_WAX_GOURD", 1001, Tiles.Tile.TILE_GRASS.id, GrassData.GrowthStage.MEDIUM, (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
-        forageEntries.add(forageDataIni.newInstance("GTALL_WAX_GOURD", 1002, Tiles.Tile.TILE_GRASS.id, GrassData.GrowthStage.TALL, (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
-        forageEntries.add(forageDataIni.newInstance("GWILD_WAX_GOURD", 1003, Tiles.Tile.TILE_GRASS.id, GrassData.GrowthStage.WILD, (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
-        forageEntries.add(forageDataIni.newInstance("STEPPE_WAX_GOURD", 1004, Tiles.Tile.TILE_STEPPE.id, GrassData.GrowthStage.SHORT, (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
-        forageEntries.add(forageDataIni.newInstance("MARSH_WAX_GOURD", 1005, Tiles.Tile.TILE_MARSH.id, GrassData.GrowthStage.SHORT, (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
-        forageEntries.add(forageDataIni.newInstance("TSHORT_WAX_GOURD", 1006, Tiles.Tile.TILE_TREE.id, GrassData.GrowthStage.SHORT, (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
-        forageEntries.add(forageDataIni.newInstance("TMED_WAX_GOURD", 1007, Tiles.Tile.TILE_TREE.id, GrassData.GrowthStage.MEDIUM, (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
-        forageEntries.add(forageDataIni.newInstance("TTALL_WAX_GOURD", 1008, Tiles.Tile.TILE_TREE.id, GrassData.GrowthStage.TALL, (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
-        forageEntries.add(forageDataIni.newInstance("BSHORT_WAX_GOURD", 1009, Tiles.Tile.TILE_BUSH.id, GrassData.GrowthStage.SHORT, (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
-        forageEntries.add(forageDataIni.newInstance("BMED_WAX_GOURD", 1010, Tiles.Tile.TILE_BUSH.id, GrassData.GrowthStage.MEDIUM, (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
-        forageEntries.add(forageDataIni.newInstance("BTALL_WAX_GOURD", 1011, Tiles.Tile.TILE_BUSH.id, GrassData.GrowthStage.TALL, (short) 570, waxGourdID, (byte) 0, 15, 15, -5, -5, ModifiedBy.NOTHING, 0));
-    }
-
-    @SuppressWarnings("unchecked")
-    private static void addMadderHerbReflection() throws NoSuchMethodException, NoSuchFieldException, IllegalAccessException, InstantiationException, InvocationTargetException {
-        ArrayList herbEntries = ReflectionUtil.getPrivateField(aaaJoeCommon.herbDataClazz, ReflectionUtil.getField(aaaJoeCommon.herbDataClazz, "herbEntries"));
-        Constructor herbDataIni = aaaJoeCommon.herbDataClazz.getConstructor(String.class, Integer.TYPE, Byte.TYPE, GrassData.GrowthStage.class,
-                Short.TYPE, Integer.TYPE, Byte.TYPE, Integer.TYPE, Integer.TYPE, Integer.TYPE, Integer.TYPE, ModifiedBy.class,
-                Integer.TYPE);
-        herbEntries.add(herbDataIni.newInstance("GSHORT_MADDER", 1000, Tiles.Tile.TILE_GRASS.id, GrassData.GrowthStage.SHORT, (short) 575, madderID, (byte) 0, 1, 6, 20, 15, ModifiedBy.NO_TREES, 10));
-        herbEntries.add(herbDataIni.newInstance("GMED_MADDER", 1001, Tiles.Tile.TILE_GRASS.id, GrassData.GrowthStage.MEDIUM, (short) 575, madderID, (byte) 0, 1, 10, 20, 10, ModifiedBy.NO_TREES, 20));
-        herbEntries.add(herbDataIni.newInstance("GTALL_MADDER", 1002, Tiles.Tile.TILE_GRASS.id, GrassData.GrowthStage.TALL, (short) 575, madderID, (byte) 0, 1, 20, 20, 5, ModifiedBy.NO_TREES, 30));
-        herbEntries.add(herbDataIni.newInstance("GWILD_MADDER", 1003, Tiles.Tile.TILE_GRASS.id, GrassData.GrowthStage.WILD, (short) 575, madderID, (byte) 0, 1, 40, 20, 1, ModifiedBy.NO_TREES, 40));
-        herbEntries.add(herbDataIni.newInstance("STEPPE_MADDER", 1004, Tiles.Tile.TILE_STEPPE.id, GrassData.GrowthStage.SHORT, (short) 575, madderID, (byte) 0, 10, 46, 20, 1, ModifiedBy.NO_TREES, 50));
-        herbEntries.add(herbDataIni.newInstance("MARSH_MADDER", 1005, Tiles.Tile.TILE_MARSH.id, GrassData.GrowthStage.SHORT, (short) 575, madderID, (byte) 0, 6, 26, 20, 20, ModifiedBy.NO_TREES, 20));
-        herbEntries.add(herbDataIni.newInstance("MOSS_MADDER", 1006, Tiles.Tile.TILE_MOSS.id, GrassData.GrowthStage.SHORT, (short) 575, madderID, (byte) 0, 6, 26, 20, 20, ModifiedBy.NO_TREES, 32));
-        herbEntries.add(herbDataIni.newInstance("PEAT_MADDER", 1007, Tiles.Tile.TILE_PEAT.id, GrassData.GrowthStage.SHORT, (short) 575, madderID, (byte) 0, 6, 6, 20, 20, ModifiedBy.NO_TREES, 40));
-        herbEntries.add(herbDataIni.newInstance("TSHORT_MADDER", 1008, Tiles.Tile.TILE_TREE.id, GrassData.GrowthStage.SHORT, (short) 575, madderID, (byte) 0, 6, 16, 30, 20, ModifiedBy.NOTHING, 0));
-        herbEntries.add(herbDataIni.newInstance("TMED_MADDER", 1009, Tiles.Tile.TILE_TREE.id, GrassData.GrowthStage.MEDIUM, (short) 575, madderID, (byte) 0, 6, 16, 30, 10, ModifiedBy.NOTHING, 0));
-        herbEntries.add(herbDataIni.newInstance("TTALL_MADDER", 1010, Tiles.Tile.TILE_TREE.id, GrassData.GrowthStage.TALL, (short) 575, madderID, (byte) 0, 6, 16, 30, 1, ModifiedBy.NOTHING, 0));
-        herbEntries.add(herbDataIni.newInstance("BSHORT_MADDER", 1011, Tiles.Tile.TILE_BUSH.id, GrassData.GrowthStage.SHORT, (short) 575, madderID, (byte) 0, 6, 16, 20, 10, ModifiedBy.NOTHING, 0));
-        herbEntries.add(herbDataIni.newInstance("BMED_MADDER", 1012, Tiles.Tile.TILE_BUSH.id, GrassData.GrowthStage.MEDIUM, (short) 575, madderID, (byte) 0, 6, 16, 20, 5, ModifiedBy.NOTHING, 0));
-        herbEntries.add(herbDataIni.newInstance("BTALL_MADDER", 1013, Tiles.Tile.TILE_BUSH.id, GrassData.GrowthStage.TALL, (short) 575, madderID, (byte) 0, 6, 16, 20, 1, ModifiedBy.NOTHING, 0));
-    }
-    */
+    static int getEssenceTemplateId() { return essenceTemplateId;}
 }

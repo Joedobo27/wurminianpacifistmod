@@ -1,14 +1,20 @@
 package com.Joedobo27.wurminianpacifist;
 
 
+import com.wurmonline.server.FailedException;
 import com.wurmonline.server.Server;
 import com.wurmonline.server.behaviours.Action;
 import com.wurmonline.server.behaviours.ActionEntry;
 import com.wurmonline.server.behaviours.NoSuchActionException;
 import com.wurmonline.server.creatures.Creature;
 import com.wurmonline.server.items.Item;
+import com.wurmonline.server.items.ItemFactory;
 import com.wurmonline.server.items.ItemList;
+import com.wurmonline.server.items.NoSuchTemplateException;
 import com.wurmonline.server.players.Player;
+import com.wurmonline.server.skills.Skill;
+import com.wurmonline.server.skills.SkillList;
+import com.wurmonline.server.skills.Skills;
 import org.gotti.wurmunlimited.modsupport.actions.ActionPerformer;
 import org.gotti.wurmunlimited.modsupport.actions.BehaviourProvider;
 import org.gotti.wurmunlimited.modsupport.actions.ModAction;
@@ -32,6 +38,7 @@ class CreateEssenceAction implements ModAction, BehaviourProvider, ActionPerform
     private final float CONVERT_TIME_TO_COUNTER_DIVISOR = 10.0f;
     private static WeakHashMap<Action, EssenceActionData> actionListener;
 
+    @Deprecated
     private class DataGroup {
         int templateId;
         int rarity;
@@ -53,7 +60,7 @@ class CreateEssenceAction implements ModAction, BehaviourProvider, ActionPerform
     private class EssenceActionData {
 
         ArrayList<Item> gooItems;
-        HashMap<DataGroup, ArrayList<Item>> groupedRareItems; // items of rarity grouped by templateId and rarity.
+        //HashMap<DataGroup, ArrayList<Item>> groupedRareItems; // items of rarity grouped by templateId and rarity.
         HashMap<Integer, ArrayList<Item>> rareItems;
         Item gemActive;
 
@@ -66,6 +73,7 @@ class CreateEssenceAction implements ModAction, BehaviourProvider, ActionPerform
             groupRareItemsByTemplate(amphoraTarget);
         }
 
+        /*
         private void groupRareItems(Item container) {
             ArrayList<Item> items = getRareItems(container);
             for (Item item : items) {
@@ -78,23 +86,28 @@ class CreateEssenceAction implements ModAction, BehaviourProvider, ActionPerform
                     groupedRareItems.get(data3).add(item);
             }
         }
+        */
 
         private void groupRareItemsByTemplate(Item container) {
             ArrayList<Item> items = getRareItems(container);
+            logger.log(Level.INFO, "found items " + items.toString());
             for (Item item : items) {
                 if ((int)rareItems.keySet().stream().filter(templateId -> templateId == item.getTemplateId()).count() == 0) {
                     rareItems.put(item.getTemplateId(), new ArrayList<>(Collections.singletonList(item)));
                 }
-                Integer index = rareItems.keySet().stream().filter(templateId -> templateId == item.getTemplateId()).findFirst().orElse(null);
-                if (index != null)
-                    rareItems.get(index).add(item);
+                else {
+                    Integer index = rareItems.keySet().stream().filter(templateId -> templateId == item.getTemplateId()).findFirst().orElse(null);
+                    if (index != null)
+                        rareItems.get(index).add(item);
+                }
             }
+            logger.log(Level.INFO, "rare items " + rareItems.toString());
         }
 
         private ArrayList<Item> getRareItems(Item container) {
             Item[] contents = container.getAllItems(false);
             return Arrays.stream(contents)
-                    .filter(item -> item.getRarity() > NO_RARITY.getId() && item.getTemplateId() != WurminianPacifistMod.getDullGooID() &&
+                    .filter(item -> item.getRarity() > NO_RARITY.getId() && item.getTemplateId() != WurminianPacifistMod.getDullGooTemplateId() &&
                     item.getWeightGrams() == item.getTemplate().getWeightGrams())
                     .collect(Collectors.toCollection(ArrayList::new));
         }
@@ -102,7 +115,7 @@ class CreateEssenceAction implements ModAction, BehaviourProvider, ActionPerform
         private ArrayList<Item> getDullGooItems(Item container) {
             Item[] contents = container.getAllItems(false);
             return Arrays.stream(contents)
-                    .filter(item -> item.getTemplateId() == WurminianPacifistMod.getDullGooID() &&
+                    .filter(item -> item.getTemplateId() == WurminianPacifistMod.getDullGooTemplateId() &&
                             item.getWeightGrams() == item.getTemplate().getWeightGrams())
                     .collect(Collectors.toCollection(ArrayList::new));
         }
@@ -112,7 +125,7 @@ class CreateEssenceAction implements ModAction, BehaviourProvider, ActionPerform
                 return 0;
             }
             return (float) rareItems.values().stream()
-                    .mapToDouble(items -> getTotalUnitCount((Item[]) items.toArray()))
+                    .mapToDouble((ArrayList<Item> items) -> getTotalUnitCount(items.toArray(new Item[items.size()])))
                     .sum();
         }
 
@@ -120,7 +133,7 @@ class CreateEssenceAction implements ModAction, BehaviourProvider, ActionPerform
             if (gooItems == null) {
                 return 0;
             }
-            return getTotalUnitCount((Item[]) gooItems.toArray());
+            return getTotalUnitCount(gooItems.toArray(new Item[gooItems.size()]));
         }
 
         private float getGemUnitCount() {
@@ -141,6 +154,8 @@ class CreateEssenceAction implements ModAction, BehaviourProvider, ActionPerform
          * @return float type.
          */
         private float getTotalUnitCount(Item[] sameTypeItems){
+            if (sameTypeItems.length == 0)
+                return 0.0f;
             int itemTemplateID = sameTypeItems[0].getTemplateId();
             boolean identicalItemTemplates = 0 == Arrays.stream(sameTypeItems)
                     .filter(value -> value.getTemplateId() != itemTemplateID)
@@ -186,7 +201,7 @@ class CreateEssenceAction implements ModAction, BehaviourProvider, ActionPerform
             return removed;
         }
 
-        private ArrayList<Item> destoryRares(int unitsToMake) {
+        private ArrayList<Item> destroyRares(int unitsToMake) {
             ArrayList<Item> removed = new ArrayList<>();
 
             ArrayList<Integer> keys = rareItems.keySet().stream().collect(Collectors.toCollection(ArrayList::new));
@@ -254,23 +269,54 @@ class CreateEssenceAction implements ModAction, BehaviourProvider, ActionPerform
                     performer.getCurrentAction().setTimeLeft(time);
                     performer.sendActionControl(action.getActionEntry().getVerbString(), true, time);
                     return false;
-                }
-                else {
+                } else {
                     essenceActionData = actionListener.get(action);
                     if (isActionDone(performer.getCurrentAction().getTimeLeft(), counter) && essenceActionData != null) {
                         if (!requiredMaterialsInContainer(essenceActionData, performer, amphoraTarget))
                             return true;
                         int unitsToMake = essenceActionData.getSmallestUnit();
                         // Damage gem
-                        gemActive.setQualityLevel(gemActive.getQualityLevel() - (unitsToMake * 10.0f));
+                        gemActive.setQualityLevel(gemActive.getQualityLevel() - (unitsToMake * WurminianPacifistMod.getGemQualityPer()));
                         // Destroy goo in the proper proportions.
                         ArrayList<Item> destroyedGoos = essenceActionData.destroyGoo(unitsToMake);
                         destroyedGoos.forEach(item -> item.setWeight(item.getWeightGrams() - item.getTemplate().getWeightGrams(), true));
                         // Destroy rares in the proper proportions.
-                        ArrayList<Item> destoryedRares = essenceActionData.destoryRares(unitsToMake);
-                        destoryedRares.forEach(item -> item.setWeight(item.getWeightGrams() - item.getTemplate().getWeightGrams(), true));
-                        // create essence in container.
+                        ArrayList<Item> destroyedRares = essenceActionData.destroyRares(unitsToMake);
 
+                        // do skill check for Natural substances
+                        Skills skills = performer.getSkills();
+                        Skill natural_substances = skills.getSkillOrLearn(SkillList.ALCHEMY_NATURAL);
+                        Skill mind_logic = skills.getSkillOrLearn(SkillList.MIND_LOGICAL);
+                        double power = natural_substances.skillCheck(10, amphoraTarget, mind_logic.getKnowledge() / 5, false, counter);
+                        // create essence in container.
+                        for (Item item : destroyedRares) {
+                            Item essence = null;
+                            try {
+                                essence = ItemFactory.createItem(WurminianPacifistMod.getEssenceTemplateId(), (float) Math.max(power, 1.0f), (byte) 21, null);
+                            } catch (NoSuchTemplateException e1) {
+                                logger.log(Level.WARNING, e1.getMessage(), e1);
+                            } catch (FailedException e2) {
+                                logger.log(Level.WARNING, "Failed to create item.", e2);
+                            }
+                            int weightMultiplier = 1;
+                            switch (item.getRarity()) {
+                                case 1:
+                                    weightMultiplier = 1;
+                                    break;
+                                case 2:
+                                    weightMultiplier = 34; // SUPREME
+                                    break;
+                                case 3:
+                                    weightMultiplier = 9709; // FANTASTIC
+                                    break;
+                            }
+                            essence.setWeight(essence.getTemplate().getWeightGrams() * weightMultiplier, true);
+                            essence.setParentId(amphoraTarget.getWurmId(), false);
+                            amphoraTarget.insertItem(essence, true);
+                        }
+
+                        destroyedRares.forEach(item -> item.setWeight(item.getWeightGrams() - item.getTemplate().getWeightGrams(), true));
+                        return true;
                     }
                 }
             } catch (NoSuchActionException e) {

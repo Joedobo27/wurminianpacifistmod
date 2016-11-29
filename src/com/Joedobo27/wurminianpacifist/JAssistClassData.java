@@ -28,16 +28,17 @@ class JAssistClassData {
         classFile = ctClass.getClassFile();
         constPool = classFile.getConstPool();
         if (clazz == null)
-            intClassInstances();
+            initClassInstances();
         clazz.put(ctClass.getSimpleName(), this);
     }
 
-    private static void intClassInstances(){
+    private static void initClassInstances(){
         clazz = new HashMap<>();
     }
 
     static JAssistClassData getClazz(String name) {
-        logger.log(Level.INFO, clazz.toString());
+        if (clazz == null)
+            initClassInstances();
         return clazz.get(name);
     }
 

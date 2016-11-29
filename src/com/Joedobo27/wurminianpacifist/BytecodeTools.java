@@ -283,7 +283,7 @@ class BytecodeTools {
         return byteAddress;
     }
 
-    private static byte[] intToByteArray(int value, int byteLength) {
+    static byte[] intToByteArray(int value, int byteLength) {
         switch (byteLength) {
 
             case 1:

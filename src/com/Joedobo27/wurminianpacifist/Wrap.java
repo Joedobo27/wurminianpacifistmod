@@ -73,10 +73,10 @@ class Wrap {
 
     @SuppressWarnings("unused")
     enum Rarity {
-        NO_RARITY(0),
-        RARE(1),
-        SUPREME(2),
-        FANTASTIC(3);
+        NO_RARITY(0, null),
+        RARE(1, "1 in 1"),
+        SUPREME(2, "1 in 34"),
+        FANTASTIC(3, "1 in 9709");
 
         /*
         Player getRarity()
@@ -88,14 +88,17 @@ class Wrap {
 
         */
         private final int id;
+        private final String chance;
 
-        Rarity(int id){
+        Rarity(int id, String chance){
             this.id = id;
+            this.chance = chance;
         }
 
-        public byte getId() {
-            return (byte)id;
+        byte getId() {return (byte)id;
         }
+
+        String getChance() {return chance;}
     }
 
     static Item getItemFromID(long id){
