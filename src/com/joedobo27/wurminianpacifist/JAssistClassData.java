@@ -1,4 +1,4 @@
-package com.Joedobo27.wurminianpacifist;
+package com.joedobo27.wurminianpacifist;
 
 import javassist.ClassPool;
 import javassist.CtClass;
@@ -11,7 +11,6 @@ import java.io.PrintWriter;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 @SuppressWarnings("unused")

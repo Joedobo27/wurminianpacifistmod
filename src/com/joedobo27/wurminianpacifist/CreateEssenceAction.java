@@ -1,4 +1,4 @@
-package com.Joedobo27.wurminianpacifist;
+package com.joedobo27.wurminianpacifist;
 
 
 import com.wurmonline.server.FailedException;
@@ -9,7 +9,6 @@ import com.wurmonline.server.behaviours.NoSuchActionException;
 import com.wurmonline.server.creatures.Creature;
 import com.wurmonline.server.items.Item;
 import com.wurmonline.server.items.ItemFactory;
-import com.wurmonline.server.items.ItemList;
 import com.wurmonline.server.items.NoSuchTemplateException;
 import com.wurmonline.server.players.Player;
 import com.wurmonline.server.skills.Skill;
@@ -26,8 +25,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-import static com.Joedobo27.wurminianpacifist.Wrap.Actions.*;
-import static com.Joedobo27.wurminianpacifist.Wrap.Rarity.*;
+import static com.joedobo27.wurminianpacifist.Wrap.Actions.*;
+import static com.joedobo27.wurminianpacifist.Wrap.Rarity.*;
 
 
 class CreateEssenceAction implements ModAction, BehaviourProvider, ActionPerformer {
@@ -63,14 +62,16 @@ class CreateEssenceAction implements ModAction, BehaviourProvider, ActionPerform
         //HashMap<DataGroup, ArrayList<Item>> groupedRareItems; // items of rarity grouped by templateId and rarity.
         HashMap<Integer, ArrayList<Item>> rareItems;
         Item gemActive;
+        int unitsToMake;
 
-        EssenceActionData(Item gemActive, Item amphoraTarget) {
+        EssenceActionData(Item gemActive, Item AlembicTarget) {
             this.gemActive = gemActive;
-            gooItems = getDullGooItems(amphoraTarget);
+            gooItems = getDullGooItems(AlembicTarget);
             //groupedRareItems = new HashMap<>();
             //groupRareItems(amphoraTarget);
             rareItems = new HashMap<>();
-            groupRareItemsByTemplate(amphoraTarget);
+            groupRareItemsByTemplate(AlembicTarget);
+            unitsToMake = getSmallestUnit();
         }
 
         /*
@@ -137,8 +138,7 @@ class CreateEssenceAction implements ModAction, BehaviourProvider, ActionPerform
         }
 
         private float getGemUnitCount() {
-            final float QUALITY_PER_CONVERSION = 10.0f;
-            return gemActive.getQualityLevel() / QUALITY_PER_CONVERSION;
+            return gemActive.getQualityLevel() / WurminianPacifistMod.getGemQualityPer();
         }
 
         private int getSmallestUnit() {
@@ -235,7 +235,7 @@ class CreateEssenceAction implements ModAction, BehaviourProvider, ActionPerform
 
     @Override
     public List<ActionEntry> getBehavioursFor(Creature performer, Item subject, Item target) {
-        if (activeItemIsCatalyst(subject) && target.getTemplateId() == ItemList.amphoraLargePottery){
+        if (activeItemIsCatalyst(subject) && target.getTemplateId() == WurminianPacifistMod.getPotteryAlembicTemplateId()){
             return Collections.singletonList(actionEntry);
         } else
             return null;
@@ -247,34 +247,36 @@ class CreateEssenceAction implements ModAction, BehaviourProvider, ActionPerform
     }
 
     @Override
-    public boolean action(Action action, Creature performer, Item gemActive, Item amphoraTarget, short num, float counter) {
-        if (performer instanceof Player && amphoraTarget != null && activeItemIsCatalyst(gemActive) &&
-                amphoraTarget.getTemplateId() == ItemList.amphoraLargePottery) {
+    public boolean action(Action action, Creature performer, Item gemActive, Item AlembicTarget, short num, float counter) {
+        if (performer instanceof Player && AlembicTarget != null && activeItemIsCatalyst(gemActive) &&
+                AlembicTarget.getTemplateId() == WurminianPacifistMod.getPotteryAlembicTemplateId()) {
             try {
                 int time;
                 final float ACTION_START_TIME = 1.0f;
+
                 WeakReference<Action> weakActionReference;
                 EssenceActionData essenceActionData;
                 if (counter == ACTION_START_TIME) {
-                    essenceActionData = new EssenceActionData(gemActive, amphoraTarget);
+                    essenceActionData = new EssenceActionData(gemActive, AlembicTarget);
                     actionListener.put(action, essenceActionData);
 
-                    if (!requiredMaterialsInContainer(essenceActionData, performer, amphoraTarget))
+                    if (!requiredMaterialsInContainer(essenceActionData, performer, AlembicTarget))
                         return true;
 
                     performer.getCommunicator().sendNormalServerMessage("You start " + action.getActionEntry().getVerbString() + ".");
                     Server.getInstance().broadCastAction(performer.getName() + " starts to " + action.getActionString() + ".", performer, 5);
 
-                    time = 50;
+
+                    time = WurminianPacifistMod.getBaseActionTime() * essenceActionData.unitsToMake;
                     performer.getCurrentAction().setTimeLeft(time);
                     performer.sendActionControl(action.getActionEntry().getVerbString(), true, time);
                     return false;
                 } else {
                     essenceActionData = actionListener.get(action);
                     if (isActionDone(performer.getCurrentAction().getTimeLeft(), counter) && essenceActionData != null) {
-                        if (!requiredMaterialsInContainer(essenceActionData, performer, amphoraTarget))
+                        if (!requiredMaterialsInContainer(essenceActionData, performer, AlembicTarget))
                             return true;
-                        int unitsToMake = essenceActionData.getSmallestUnit();
+                        int unitsToMake = essenceActionData.unitsToMake;
                         // Damage gem
                         gemActive.setQualityLevel(gemActive.getQualityLevel() - (unitsToMake * WurminianPacifistMod.getGemQualityPer()));
                         // Destroy goo in the proper proportions.
@@ -287,7 +289,7 @@ class CreateEssenceAction implements ModAction, BehaviourProvider, ActionPerform
                         Skills skills = performer.getSkills();
                         Skill natural_substances = skills.getSkillOrLearn(SkillList.ALCHEMY_NATURAL);
                         Skill mind_logic = skills.getSkillOrLearn(SkillList.MIND_LOGICAL);
-                        double power = natural_substances.skillCheck(10, amphoraTarget, mind_logic.getKnowledge() / 5, false, counter);
+                        double power = natural_substances.skillCheck(1, AlembicTarget, mind_logic.getKnowledge() / 5, false, counter);
                         // create essence in container.
                         for (Item item : destroyedRares) {
                             Item essence = null;
@@ -310,9 +312,12 @@ class CreateEssenceAction implements ModAction, BehaviourProvider, ActionPerform
                                     weightMultiplier = 9709; // FANTASTIC
                                     break;
                             }
-                            essence.setWeight(essence.getTemplate().getWeightGrams() * weightMultiplier, true);
-                            essence.setParentId(amphoraTarget.getWurmId(), false);
-                            amphoraTarget.insertItem(essence, true);
+                            if (essence != null) {
+                                essence.setWeight(essence.getTemplate().getWeightGrams() * weightMultiplier, true);
+                                essence.setRarity((byte) 0);
+                                essence.setParentId(AlembicTarget.getWurmId(), false);
+                                AlembicTarget.insertItem(essence, true);
+                            }
                         }
 
                         destroyedRares.forEach(item -> item.setWeight(item.getWeightGrams() - item.getTemplate().getWeightGrams(), true));
@@ -338,6 +343,10 @@ class CreateEssenceAction implements ModAction, BehaviourProvider, ActionPerform
         }
         if (!essenceActionData.contentsEquals(container)) {
             performer.getCommunicator().sendNormalServerMessage("Removing items stops the conversion.");
+            return false;
+        }
+        if (essenceActionData.gemActive.getQualityLevel() < WurminianPacifistMod.getGemQualityPer()) {
+            performer.getCommunicator().sendNormalServerMessage("The gem is of too low quality.");
             return false;
         }
         return true;

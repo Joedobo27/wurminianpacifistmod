@@ -1,11 +1,12 @@
-package com.Joedobo27.wurminianpacifist;
+package com.joedobo27.wurminianpacifist;
 
-import com.Joedobo27.common.Common;
+import com.joedobo27.common.Common;
 import com.wurmonline.server.behaviours.Forage;
 import com.wurmonline.server.behaviours.Herb;
 import com.wurmonline.server.items.*;
 import com.wurmonline.server.skills.SkillList;
 import javassist.*;
+import javassist.Modifier;
 import javassist.bytecode.*;
 import javassist.expr.ExprEditor;
 import javassist.expr.MethodCall;
@@ -19,14 +20,13 @@ import org.gotti.wurmunlimited.modsupport.ItemTemplateBuilder;
 import org.gotti.wurmunlimited.modsupport.actions.ModActions;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.*;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static com.Joedobo27.wurminianpacifist.BytecodeTools.addConstantPoolReference;
-import static com.Joedobo27.wurminianpacifist.BytecodeTools.findConstantPoolReference;
+import static com.joedobo27.wurminianpacifist.BytecodeTools.addConstantPoolReference;
+import static com.joedobo27.wurminianpacifist.BytecodeTools.findConstantPoolReference;
 
 @SuppressWarnings({"unused", "FieldCanBeLocal"})
 public class WurminianPacifistMod implements WurmServerMod, Initable, Configurable, ServerStartedListener, ItemTemplatesCreatedListener {
@@ -34,33 +34,29 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
     private static Logger logger;
 
     private static boolean craftCottonPelt = false;
-    private static int towelX = 5;
-    private static int towelY = 10;
-    private static int towelZ = 10;
-    private static int towelGrams = 2000;
-    private static float towelDifficulty = 20.0f;
-    private static int towelValue = 30000;
-    private static boolean toolInWSToBS = false;
-    private static int squareGramsInTowel = 1200;
-    private static int stringGramsInTowel = 800;
-    private static boolean craftCottonBed = false;
-    private static boolean redDyeFromMadder = false;
     private static boolean cheeseDrillWithCloth = false;
+    private static boolean craftCottonBed = false;
+    private static boolean craftCottonToolBelt = false;
+    private static boolean toolInWSToBS = false;
+    private static boolean redDyeFromMadder = false;
     private static boolean craftGourdCanteen = false;
     private static boolean waxGourdToFat = false;
-    private static boolean craftCottonToolBelt = false;
     private static boolean enableEssenceSystem = false;
     private static float gemQualityPer = 5.0f;
+    private static int baseActionTime = 50; // tenths of a second.
+    private static float alembicDifficulty = 70.0f;
 
-    private static int towelTemplateId;
+
     private static int cottonBedTemplateId;
     private static int madderTemplateId = Integer.MAX_VALUE - 8;
     private static int cheeseDrillTemplateId;
     private static int waxGourdTemplateId = Integer.MAX_VALUE - 8;
     private static int gourdCanteenTemplateId;
-    private static int cottonToolbeltTemplateId;
+    private static int cottonToolBeltTemplateId;
     private static int dullGooTemplateId;
     private static int essenceTemplateId;
+    private static int clayAlembicTemplateId;
+    private static int potteryAlembicTemplateId;
 
     static {
         logger = Logger.getLogger(WurminianPacifistMod.class.getName());
@@ -73,26 +69,16 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
     @Override
     public void configure(Properties properties) {
         craftCottonPelt = Boolean.parseBoolean(properties.getProperty("craftCottonPelt", Boolean.toString(craftCottonPelt)));
-        towelX = Integer.parseInt(properties.getProperty("towel.x", Integer.toString(towelX)));
-        towelY = Integer.parseInt(properties.getProperty("towel.y", Integer.toString(towelY)));
-        towelZ = Integer.parseInt(properties.getProperty("towel.z", Integer.toString(towelZ)));
-        towelGrams = Integer.parseInt(properties.getProperty("towel.grams", Integer.toString(towelGrams)));
-        towelDifficulty = Float.parseFloat(properties.getProperty("towel.difficulty", Float.toString(towelDifficulty)));
-        towelValue = Integer.parseInt(properties.getProperty("towel.value", Integer.toString(towelValue)));
-        squareGramsInTowel = Integer.parseInt(properties.getProperty("towel.squareGramWeight", Integer.toString(squareGramsInTowel)));
-        stringGramsInTowel = Integer.parseInt(properties.getProperty("towel.stringGramsWeight", Integer.toString(stringGramsInTowel)));
-        enableEssenceSystem = Boolean.parseBoolean(properties.getProperty("enableEssenceSystem", Boolean.toString(enableEssenceSystem)));
-        toolInWSToBS = Boolean.parseBoolean(properties.getProperty("toolInWSToBS", Boolean.toString(toolInWSToBS)));
-        craftCottonBed = Boolean.parseBoolean(properties.getProperty("craftCottonBed", Boolean.toString(craftCottonBed)));
-        redDyeFromMadder = Boolean.parseBoolean(properties.getProperty("redDyeFromMadder", Boolean.toString(redDyeFromMadder)));
         cheeseDrillWithCloth = Boolean.parseBoolean(properties.getProperty("cheeseDrillWithCloth", Boolean.toString(cheeseDrillWithCloth)));
+        craftCottonBed = Boolean.parseBoolean(properties.getProperty("craftCottonBed", Boolean.toString(craftCottonBed)));
+        craftCottonToolBelt = Boolean.parseBoolean(properties.getProperty("craftCottonToolBelt", Boolean.toString(craftCottonToolBelt)));
+        toolInWSToBS = Boolean.parseBoolean(properties.getProperty("toolInWSToBS", Boolean.toString(toolInWSToBS)));
+        redDyeFromMadder = Boolean.parseBoolean(properties.getProperty("redDyeFromMadder", Boolean.toString(redDyeFromMadder)));
         craftGourdCanteen = Boolean.parseBoolean(properties.getProperty("craftGourdCanteen", Boolean.toString(craftGourdCanteen)));
         waxGourdToFat = Boolean.parseBoolean(properties.getProperty("waxGourdToFat", Boolean.toString(waxGourdToFat)));
-        craftCottonToolBelt = Boolean.parseBoolean(properties.getProperty("craftCottonToolBelt", Boolean.toString(craftCottonToolBelt)));
+        enableEssenceSystem = Boolean.parseBoolean(properties.getProperty("enableEssenceSystem", Boolean.toString(enableEssenceSystem)));
         gemQualityPer = Float.parseFloat(properties.getProperty("gemQualityPer", Float.toString(gemQualityPer)));
-        //waxGourdTemplateId = Integer.parseInt(properties.getProperty("waxGourdTemplateId", Integer.toString(waxGourdTemplateId)));
-        //madderTemplateId = Integer.parseInt(properties.getProperty("madderTemplateId", Integer.toString(madderTemplateId)));
-        //dullGooTemplateId = Integer.parseInt(properties.getProperty("dullGooTemplateId", Integer.toString(dullGooTemplateId)));
+        baseActionTime = Integer.parseInt(properties.getProperty("baseActionTime", Integer.toString(baseActionTime)));
     }
 
     @Override
@@ -111,40 +97,13 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
 
     @Override
     public void onItemTemplatesCreated() {
-        if (craftCottonPelt) {
-            ItemTemplateBuilder towel = new ItemTemplateBuilder("jdbTowel");
-            towelTemplateId = IdFactory.getIdFor("jdbTowel", IdType.ITEMTEMPLATE);
-            towel.name("towel", "towels", "A thick piece of cloth with many looped strings protruding from the surface.");
-            towel.size(3);
-            //towel.descriptions();
-            towel.itemTypes(new short[]{ItemTypes.ITEM_TYPE_CLOTH, ItemTypes.ITEM_TYPE_BULK});
-            towel.imageNumber((short) 640);
-            towel.behaviourType((short) 1);
-            towel.combatDamage(0);
-            towel.decayTime(3024000L);
-            towel.dimensions(towelX, towelY, towelZ);
-            towel.primarySkill(-10);
-            //towel.bodySpaces();
-            towel.modelName("model.resource.yard.");
-            towel.difficulty(towelDifficulty);
-            towel.weightGrams(towelGrams);
-            towel.material((byte) 17);
-            towel.value(towelValue);
-            towel.isTraded(true);
-            //towel.armourType();
-            try {
-                towel.build();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
         if (enableEssenceSystem) {
             ItemTemplateBuilder dullGoo = new ItemTemplateBuilder("jdbDullGoo");
             dullGooTemplateId = IdFactory.getIdFor("jdbDullGoo", IdType.ITEMTEMPLATE);
             dullGoo.name("Dull goo", "Dull goo", "It's gooey.");
             dullGoo.size(3);
             //cottonBed.descriptions();
-            dullGoo.itemTypes(new short[]{6});
+            dullGoo.itemTypes(new short[]{6, 146});
             dullGoo.imageNumber((short) 588);
             dullGoo.behaviourType((short) 1);
             dullGoo.combatDamage(0);
@@ -170,7 +129,7 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
             essence.name("Essence", "Essences", "An essence of rarity.");
             essence.size(3);
             //cottonBed.descriptions();
-            essence.itemTypes(new short[]{6});
+            essence.itemTypes(new short[]{6, 146});
             essence.imageNumber((short) 643);
             essence.behaviourType((short) 1);
             essence.combatDamage(0);
@@ -178,9 +137,9 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
             essence.dimensions(1, 1, 1);
             essence.primarySkill(-10);
             //cottonBed.bodySpaces();
-            essence.modelName("model.furniture.bed.standard.");
+            essence.modelName("model.food.salt.source.");
             essence.difficulty(20.0f);
-            essence.weightGrams(100);
+            essence.weightGrams(10);
             essence.material((byte) 21);
             essence.value(100000);
             essence.isTraded(true);
@@ -190,6 +149,67 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
             } catch (IOException e) {
                 e.printStackTrace();
             }
+
+            ItemTemplateBuilder clayAlembic = new ItemTemplateBuilder("jdbClayAlembic");
+            clayAlembicTemplateId = IdFactory.getIdFor("jdbClayAlembic", IdType.ITEMTEMPLATE);
+            //https://en.wikipedia.org/wiki/Alembic
+            clayAlembic.name("Alembic", "Alembics", "An alchemical still.");
+            clayAlembic.size(3);
+            //clayAlembic.descriptions();
+            clayAlembic.itemTypes(new short[]{ItemTypes.ITEM_TYPE_HOLLOW, ItemTypes.ITEM_TYPE_REPAIRABLE, ItemTypes.ITEM_TYPE_UNFIRED});
+            clayAlembic.imageNumber((short)662);
+            clayAlembic.behaviourType((short) 1);
+            clayAlembic.combatDamage(0);
+            clayAlembic.decayTime(172800L);
+            clayAlembic.dimensions(75, 75, 150);
+            clayAlembic.primarySkill(-10);
+            //clayAlembic.bodySpaces();
+            clayAlembic.modelName("model.decoration.amphora.large.");
+            clayAlembic.difficulty(alembicDifficulty);
+            clayAlembic.weightGrams(100000);
+            clayAlembic.material((byte)18);
+            clayAlembic.value(10000);
+            clayAlembic.isTraded(true);
+            //clayAlembic.armourType();
+            try {
+                clayAlembic.build();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            ItemTemplateBuilder potteryAlembic = new ItemTemplateBuilder("jdbPotteryAlembic");
+            potteryAlembicTemplateId = IdFactory.getIdFor("jdbPotteryAlembic", IdType.ITEMTEMPLATE);
+            //https://en.wikipedia.org/wiki/Alembic
+            potteryAlembic.name("Alembic", "Alembics", "An alchemical still.");
+            potteryAlembic.size(3);
+            //potteryAlembic.descriptions();
+            potteryAlembic.itemTypes(new short[]{ItemTypes.ITEM_TYPE_HOLLOW, ItemTypes.ITEM_TYPE_CONTAINER_LIQUID,
+                    ItemTypes.ITEM_TYPE_USE_GROUND_ONLY, ItemTypes.ITEM_TYPE_POTTERY, ItemTypes.ITEM_TYPE_REPAIRABLE,
+                    ItemTypes.ITEM_TYPE_COLORABLE, ItemTypes.ITEM_TYPE_NOMOVE, ItemTypes.ITEM_TYPE_OWNER_MOVEABLE,
+                    ItemTypes.ITEM_TYPE_OWNER_TURNABLE, ItemTypes.ITEM_TYPE_DECORATION,
+                    ItemTypes.ITEM_TYPE_TRANSPORTABLE, ItemTypes.ITEM_TYPE_USES_SPECIFIED_CONTAINER_VOLUME});
+            potteryAlembic.imageNumber((short)682);
+            potteryAlembic.behaviourType((short) 1);
+            potteryAlembic.combatDamage(0);
+            potteryAlembic.decayTime(12096000L);
+            potteryAlembic.dimensions(119, 119, 409); // large cart container is 120, 120, 410.
+            potteryAlembic.primarySkill(-10);
+            //potteryAlembic.bodySpaces();
+            potteryAlembic.modelName("model.decoration.amphora.large.");
+            potteryAlembic.difficulty(5.0f);
+            potteryAlembic.weightGrams(100000);
+            potteryAlembic.material((byte)19);
+            potteryAlembic.value(10000);
+            potteryAlembic.isTraded(true);
+            //potteryAlembic.armourType();
+            ItemTemplate potteryAlembicTemplate;
+            try {
+                potteryAlembicTemplate = potteryAlembic.build();
+                potteryAlembicTemplate.setContainerSize(206,206,206); // Largest dimension appears to be 205 for a take item.
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
         }
         if (craftCottonBed) {
             ItemTemplateBuilder cottonBed = new ItemTemplateBuilder("jdbCottonBed");
@@ -254,7 +274,7 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
             cheeseDrill.name("cheese drill", "cheese drills", "A wooden press used to compress cheese curds and separate out whey.");
             cheeseDrill.size(3);
             //cheeseDrill.descriptions();
-            cheeseDrill.itemTypes(new short[]{108, 44, 144, 38, 21, 92, 147, 51});
+            cheeseDrill.itemTypes(new short[]{108, 44, 144, 38, 21, 92, 147, 51, 210});
             cheeseDrill.imageNumber((short) 266);
             cheeseDrill.behaviourType((short) 1);
             cheeseDrill.combatDamage(0);
@@ -277,7 +297,7 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
         }
         if (craftCottonToolBelt) {
             ItemTemplateBuilder cottonToolBelt = new ItemTemplateBuilder("jdbCottonToolBelt");
-            cottonToolbeltTemplateId = IdFactory.getIdFor("jdbCottonToolBelt", IdType.ITEMTEMPLATE);
+            cottonToolBeltTemplateId = IdFactory.getIdFor("jdbCottonToolBelt", IdType.ITEMTEMPLATE);
             cottonToolBelt.name("toolbelt", "toolbelts", "An ingenious system of pockets, pouches, hooks and holes designed to keep a wide array of common tools.");
             cottonToolBelt.size(3);
             //cottonToolBelt.descriptions();
@@ -317,8 +337,8 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
             waxGourd.primarySkill(-10);
             //waxGourd.bodySpaces();
             waxGourd.modelName("model.food.pumpkin.");
-            waxGourd.difficulty(200.0f);
-            waxGourd.weightGrams(100);
+            waxGourd.difficulty(2.0f);
+            waxGourd.weightGrams(1000);
             waxGourd.material((byte)22);
             waxGourd.value(10);
             waxGourd.isTraded(true);
@@ -361,13 +381,28 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
         try {
             ModActions.registerAction(new CreateEssenceAction());
             cottonCreationSubstitutes();
+            addPotteryTempStates();
+            essenceCreationEntries();
             waxGourdReflection();
             madderReflection();
             toolInWSToBSReflection();
+
             JAssistClassData.voidClazz();
         } catch (IllegalAccessException | NoSuchFieldException | ClassNotFoundException | NoSuchMethodException | InstantiationException |
                 InvocationTargetException e) {
             logger.log(Level.WARNING,e.getMessage(), e);
+        }
+    }
+
+    private void printHerbEnum() throws NoSuchFieldException, IllegalAccessException, ClassNotFoundException{
+        Field itemType = ReflectionUtil.getField(Class.forName("com.wurmonline.server.behaviours.Forage"), "itemType");
+        int itemT;
+        CharSequence waxGourd = "WAX_GOURD";
+        for (Forage forage:Forage.values()){
+            if (forage.name().contains(waxGourd)) {
+                itemT = ReflectionUtil.getPrivateField(forage,itemType);
+                logger.log(Level.INFO, String.format("%s$  %d$  %f$", forage.name(), forage.getItem(), forage.getDifficultyAt(99)));
+            }
         }
     }
 
@@ -388,6 +423,17 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
 
         redDyeFromMadderSuccesses[0] = checkSaneAmountsBytecodeAlter() ? 1 : 0;
         redDyeFromMadderSuccesses[1] = getCompositeColorBytecodeAlter() ? 1 : 0;
+
+
+        //Remove final modifier from itemType field. I need to reflectively set it with an ID generated in onItemTemplatesCreated.
+        JAssistClassData herb_class = JAssistClassData.getClazz("Herb");
+        if (herb_class == null) {
+            herb_class = new JAssistClassData("com.wurmonline.server.behaviours.Herb", classPool);
+        }
+        CtField ctField = herb_class.getCtClass().getDeclaredField("itemType", "I");
+        ctField.setModifiers(ctField.getModifiers() & ~Modifier.FINAL);
+
+
         //<editor-fold desc="Add fields to herb enum.">
         /*
         int fieldNumber
@@ -423,6 +469,8 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
 
         ExtendHerbEnum.createFieldsInEnum();
         ExtendHerbEnum.initiateEnumEntries();
+
+        evaluateChangesArray(redDyeFromMadderSuccesses, "redDyeFromMadder");
     }
 
     /**
@@ -453,7 +501,7 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
         byte[] findPoolResult;
         try {
             findConstantPoolReference(creationEntry.getConstPool(),
-                    "// Method com/Joedobo27/common/Common.checkSaneAmountsExceptionsHook:(III)I");
+                    "// Method com/joedobo27/common/Common.checkSaneAmountsExceptionsHook:(III)I");
         } catch (UnsupportedOperationException e) {
             isModifiedCheckSaneAmounts = false;
         }
@@ -487,7 +535,7 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
                 @Override
                 public void edit(MethodCall methodCall) throws CannotCompileException {
                     if (Objects.equals("getObjectCreated", methodCall.getMethodName())) {
-                        methodCall.replace("$_ = com.Joedobo27.common.Common.checkSaneAmountsExceptionsHook( $0.getObjectCreated(), sourceMax, targetMax);");
+                        methodCall.replace("$_ = com.joedobo27.common.Common.checkSaneAmountsExceptionsHook( $0.getObjectCreated(), sourceMax, targetMax);");
                         logger.log(Level.FINE, "CreationEntry.class, checkSaneAmounts(), installed hook at line: " + methodCall.getLineNumber());
                         toReturn[0] = true;
                     }
@@ -503,7 +551,7 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
      *  if (itemTemplateId == 439) {...}
      *
      * becomes-
-     *  boolean isRed = com.Joedobo27.wurminianpacifist.WurminianPacifistMod.isRedPaintItem(itemTemplateId);
+     *  boolean isRed = com.joedobo27.wurminianpacifist.WurminianPacifistMod.isRedPaintItem(itemTemplateId);
      *  if (isRed) {...}
      *
      * @return boolean type, Does itemTemplate in arg0 make red dye?
@@ -534,7 +582,7 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
         replace.addOpcode(Opcode.ILOAD_2);
         replace.addOpcode(Opcode.INVOKESTATIC);
         bytes = addConstantPoolReference(wurmColor.getConstPool(),
-                "// Method com/Joedobo27/wurminianpacifist/WurminianPacifistMod.isRedPaintItem:(I)Z");
+                "// Method com/joedobo27/wurminianpacifist/WurminianPacifistMod.isRedPaintItem:(I)Z");
         replace.add(bytes[0], bytes[1]);
         replace.addOpcode(Opcode.IFEQ);
         bytes = BytecodeTools.intToByteArray(54, 2);
@@ -564,6 +612,14 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
     private static void waxGourdBytecode() throws ClassNotFoundException, NotFoundException, CannotCompileException, BadBytecode {
         if (!craftGourdCanteen && !waxGourdToFat)
             return;
+        //Remove final modifier from itemType field. I need to reflectively set it with an ID generated in onItemTemplatesCreated.
+        JAssistClassData forage_class = JAssistClassData.getClazz("Forage");
+        if (forage_class == null) {
+            forage_class = new JAssistClassData("com.wurmonline.server.behaviours.Forage", classPool);
+        }
+        CtField ctField = forage_class.getCtClass().getDeclaredField("itemType", "I");
+        ctField.setModifiers(ctField.getModifiers() & ~Modifier.FINAL);
+
         // Add fields to forage enum.
         ExtendForageEnum extendForageEnum = new ExtendForageEnum(classPool);
         extendForageEnum.addExtendEntry("GSHORT_WAX_GOURD", "TILE_GRASS", "SHORT", (short) 570, waxGourdTemplateId, (byte) 0, 15, 15, -5, -5, "NOTHING", 0);
@@ -583,6 +639,19 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
         ExtendForageEnum.initiateEnumEntries();
     }
 
+    private static void addPotteryTempStates() {
+        if (enableEssenceSystem) {
+            TempStates.addState(new TempState(clayAlembicTemplateId, potteryAlembicTemplateId, (short) 10000, true, true, false));
+        }
+    }
+
+    private static void essenceCreationEntries() {
+        if (enableEssenceSystem) {
+            CreationEntry potteryAlembic = CreationEntryCreator.createSimpleEntry(SkillList.POTTERY, ItemList.bodyHand, ItemList.clay, clayAlembicTemplateId,
+                    false, true, 0.0f, false, false, CreationCategories.POTTERY);
+        }
+    }
+
     private static void cottonCreationSubstitutes() {
         if (craftCottonBed) {
             AdvancedCreationEntry bed = CreationEntryCreator.createAdvancedEntry(10044, 482, 483, cottonBedTemplateId, false, false, 0.0f, true, true, CreationCategories.FURNITURE);
@@ -592,13 +661,9 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
             logger.log(Level.INFO, "Cotton bed created and a away to craft it added.");
         }
         if (craftCottonPelt) {
-            CreationEntry towel = CreationEntryCreator.createSimpleEntry(SkillList.CLOTHTAILORING, ItemList.clothYard,
-                    ItemList.clothString, towelTemplateId, true, true, 0.0f, false, false, CreationCategories.TOOL_PARTS);
-            towel.setDepleteFromSource(squareGramsInTowel);
-            towel.setDepleteFromTarget(stringGramsInTowel);
             CreationEntry pelt = CreationEntryCreator.createSimpleEntry(SkillList.CLOTHTAILORING, ItemList.scissors,
-                    towelTemplateId, ItemList.pelt, false, true, 0.0f, false, false, CreationCategories.TOOLS);
-            pelt.setDepleteFromTarget(towelGrams);
+                    ItemList.sheet, ItemList.pelt, false, true, 0.0f, false, false, CreationCategories.TOOLS);
+            pelt.setDepleteFromTarget(1500);
             logger.log(Level.INFO, "Cotton Pelt created and a away to craft it added.");
         }
 
@@ -613,7 +678,7 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
         }
         if (craftCottonToolBelt) {
             CreationEntry cottonToolBelt = CreationEntryCreator.createSimpleEntry(SkillList.CLOTHTAILORING, ItemList.metalHooks, ItemList.clothYard,
-                    cottonToolbeltTemplateId, true, true, 0.0f, false, false, CreationCategories.CLOTHES);
+                    cottonToolBeltTemplateId, true, true, 0.0f, false, false, CreationCategories.CLOTHES);
             cottonToolBelt.setDepleteFromTarget(1500);
         }
     }
@@ -622,31 +687,23 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
     InvocationTargetException, NoSuchFieldException {
         if (!craftGourdCanteen && !waxGourdToFat)
             return;
-        Class forageClass = Class.forName("com.wurmonline.server.behaviours.Forage");
-        /*
-        Forage[] values = ReflectionUtil.getPrivateField(forageClass, ReflectionUtil.getField(
-                forageClass, "$VALUES"));
-
-        for (Forage f : Forage.values()){
-            String name = f == null ? "null" : f.name();
-            logger.log(Level.INFO, String.format("name %s", name));
-        }
-        */
-        Field itemType = ReflectionUtil.getField(Class.forName("com.wurmonline.server.behaviours.Herb"), "itemType");
+        Field itemType = ReflectionUtil.getField(Class.forName("com.wurmonline.server.behaviours.Forage"), "itemType");
         CharSequence waxGourd = "WAX_GOURD";
-        for (Herb herb : Herb.values()){
-            if (herb.name().contains(waxGourd)) {
-                ReflectionUtil.setPrivateField(herb, itemType, waxGourdTemplateId);
+        for (Forage forage : Forage.values()){
+            if (forage.name().contains(waxGourd)) {
+                ReflectionUtil.setPrivateField(forage, itemType, waxGourdTemplateId);
             }
         }
 
         if (waxGourdToFat) {
             CreationEntry fat = CreationEntryCreator.createSimpleEntry(SkillList.BUTCHERING, ItemList.knifeButchering, waxGourdTemplateId,
                     ItemList.tallow, false, true, 0.0f, false, false, CreationCategories.RESOURCES);
+            fat.setDepleteFromTarget(1000);
         }
         if (craftGourdCanteen) {
             CreationEntry gourdCanteen = CreationEntryCreator.createSimpleEntry(SkillList.BUTCHERING, ItemList.knifeCarving, waxGourdTemplateId,
                     gourdCanteenTemplateId, false, true, 0.0f, false, false, CreationCategories.CONTAINER);
+            gourdCanteen.setDepleteFromTarget(1000);
         }
     }
 
@@ -654,11 +711,11 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
     InvocationTargetException, NoSuchFieldException {
         if (redDyeFromMadder) {
 
-            Field itemType = ReflectionUtil.getField(Class.forName("com.wurmonline.server.behaviours.Forage"), "itemType");
+            Field itemType = ReflectionUtil.getField(Class.forName("com.wurmonline.server.behaviours.Herb"), "itemType");
             CharSequence madder = "MADDER";
-            for (Forage forage : Forage.values()){
-                if (forage.name().contains(madder)) {
-                    ReflectionUtil.setPrivateField(forage, itemType, madderTemplateId);
+            for (Herb herb : Herb.values()){
+                if (herb.name().contains(madder)) {
+                    ReflectionUtil.setPrivateField(herb, itemType, madderTemplateId);
                 }
             }
 
@@ -818,4 +875,18 @@ public class WurminianPacifistMod implements WurmServerMod, Initable, Configurab
     static float getGemQualityPer() { return gemQualityPer;}
 
     static int getEssenceTemplateId() { return essenceTemplateId;}
+
+    static int getBaseActionTime() { return baseActionTime;}
+
+    static int getPotteryAlembicTemplateId() { return potteryAlembicTemplateId;}
+
+    private static void evaluateChangesArray(int[] ints, String option) {
+        boolean changesSuccessful = Arrays.stream(ints).noneMatch(value -> value == 0);
+        if (changesSuccessful) {
+            logger.log(Level.INFO, option + " option changes SUCCESSFUL");
+        } else {
+            logger.log(Level.INFO, option + " option changes FAILURE");
+            logger.log(Level.FINE, Arrays.toString(ints));
+        }
+    }
 }

@@ -1,4 +1,4 @@
-package com.Joedobo27.wurminianpacifist;
+package com.joedobo27.wurminianpacifist;
 
 
 import javassist.*;

@@ -1,4 +1,4 @@
-package com.Joedobo27.wurminianpacifist;
+package com.joedobo27.wurminianpacifist;
 
 import javassist.CtMethod;
 import javassist.bytecode.AccessFlag;
@@ -18,7 +18,7 @@ class JAssistMethodData {
     private CodeAttribute codeAttribute;
     private CodeIterator codeIterator;
     private CtMethod ctMethod;
-    private static Logger logger = Logger.getLogger(JAssistMethodData.class.getName());
+    private static Logger logger = Logger.getLogger(WurminianPacifistMod.class.getName());
 
     JAssistMethodData(JAssistClassData jAssistClassData, String descriptor, String methodName) throws NullPointerException {
         parentClass = jAssistClassData;
